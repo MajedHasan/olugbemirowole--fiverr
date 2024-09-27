@@ -1,0 +1,146 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  email     String   @unique
+  name      String?
+  password  String
+  role      Role     @default(ENROLLEES)
+  posts     Post[]
+}
+
+model Enrollee {
+  id               Int               @id @default(autoincrement())
+  fullName         String
+  policyNo         String
+  company          String
+  planType         String
+  phoneNumber      String
+  status           Status             @default(ACTIVE)
+  hospital         String
+  noOfDependents   Int
+  dependents       Dependent[]
+  userId           Int?               @unique
+}
+
+model Dependent {
+  id         Int      @id @default(autoincrement())
+  name       String
+  enrolleeId Int
+  enrollee   Enrollee @relation(fields: [enrolleeId], references: [id])
+}
+
+model Hospital {
+  id              Int     @id @default(autoincrement())
+  hospitalName    String
+  hospitalAddress String
+  phoneNumber     String
+  email           String
+  userId          Int?    @unique
+
+  treatmentRequests TreatmentRequest[]  @relation("HospitalRequests")
+}
+
+model Organisation {
+  id                   Int     @id @default(autoincrement())
+  companyName          String
+  companyID            String
+  phoneNumber          String
+  email                String
+  clientServiceOfficer String
+  userId               Int?    @unique
+}
+
+model HMO {
+  id              Int     @id @default(autoincrement())
+  phoneNumber     String
+  email           String
+  permissions     Permission
+  userId          Int?    @unique
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  published Boolean  @default(false)
+  title     String   @db.VarChar(255)
+  author    User?    @relation(fields: [authorId], references: [id])
+  authorId  Int?
+}
+
+model Diagnosis {
+  id          Int                @id @default(autoincrement())
+  code        String             @unique // Unique code for diagnosis
+  name        String
+  description String?            // Optional description
+  requests    TreatmentRequest[] @relation("DiagnosisRequests")
+}
+
+
+model Treatment {
+  id          Int                @id @default(autoincrement())
+  serviceName String             // Service name
+  description String?            // Optional description
+  price       Float              // Price of the treatment
+  requests    TreatmentRequest[] @relation("TreatmentRequests")
+}
+
+
+model TreatmentRequest {
+  id               Int          @id @default(autoincrement())
+  hospitalId       Int          // Foreign key to Enrollee
+  hospital         Hospital     @relation("HospitalRequests", fields: [hospitalId], references: [id])
+  enrollee     String
+  policyNo         String
+  healthPlan       String
+  treatmentCost    Float
+  receipt          String?      // Optional field to store URL of uploaded receipt
+  hospitalName     String
+  hospitalEmail    String
+  hospitalPhone    String?      // Optional field
+  status           String       @default("PENDING")
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  diagnoses        Diagnosis[]   @relation("DiagnosisRequests")
+  treatments       Treatment[]    @relation("TreatmentRequests")
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  userId      Int?     // Optional: associate with a user if needed
+  message     String
+  type        String   // Type of notification (e.g., 'SMS', 'Email', 'Dashboard')
+  isRead      Boolean   @default(false)
+  createdAt   DateTime @default(now())
+}
+
+enum Role {
+  ENROLLEES
+  HOSPITAL
+  ORGANISATION
+  HMO
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum Permission {
+  ADMIN
+  ACCOUNT
+  CLAIMS_DEPARTMENT
+  CUSTOMER_CARE
+}
