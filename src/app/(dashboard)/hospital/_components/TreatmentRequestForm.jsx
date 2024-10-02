@@ -16,8 +16,8 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
     receipt: null,
     treatments: [],
     hospitalName: "Sample Hospital", // Sample value, modify as necessary
-    email: "hospital@example.com", // Sample value, modify as necessary
-    phoneNumber: "123-456-7890", // Sample value, modify as necessary
+    hospitalEmail: "hospital@example.com", // Sample value, modify as necessary
+    hospitalNumber: "123-456-7890", // Sample value, modify as necessary
   });
 
   const [diagnosisOptions, setDiagnosisOptions] = useState([]);
@@ -46,8 +46,8 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
         console.log("Before Hospital", data);
         setFormData({
           ...formData,
-          email: data.email,
-          phoneNumber: data.phoneNumber,
+          hospitalEmail: data.email,
+          hospitalPhone: data.phoneNumber,
           hospitalName: data.hospitalName,
         });
         console.log("After Hospital", data);
@@ -295,27 +295,27 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
 
             {/* Hospital Email Field */}
             <div className="field">
-              <label className="block mb-1 font-medium" htmlFor="email">
+              <label className="block mb-1 font-medium" htmlFor="hospitalEmail">
                 Hospital Email
               </label>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
+                id="hospitalEmail"
+                name="hospitalEmail"
+                type="hospitalEmail"
+                value={formData.hospitalEmail}
                 disabled
               />
             </div>
 
             {/* Hospital Phone Field */}
             <div className="field">
-              <label className="block mb-1 font-medium" htmlFor="phoneNumber">
+              <label className="block mb-1 font-medium" htmlFor="hospitalPhone">
                 Hospital Phone
               </label>
               <Input
-                id="phoneNumber"
-                name="phoneNumber"
-                value={formData.phoneNumber}
+                id="hospitalPhone"
+                name="hospitalPhone"
+                value={formData.hospitalPhone}
                 disabled
               />
             </div>

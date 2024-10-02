@@ -1,7 +1,8 @@
+"use client";
 import { useEffect, useState } from "react";
 import { message, Pagination, Table, Tag } from "antd";
 
-const TreatmentRequest = () => {
+const Claims = () => {
   const [treatmentRequests, setTreatmentRequests] = useState([]);
   const [totalTreatmentRequests, setTotalTreatmentRequests] = useState(0);
   const [treatmentRequestPage, setTreatmentRequestPage] = useState(1);
@@ -34,11 +35,9 @@ const TreatmentRequest = () => {
 
   // Fetch treatment requests
   const fetchTreatmentRequests = async () => {
-    console.log(`User Id: ${user}`);
-
     try {
       const response = await fetch(
-        `/api/treatment-request?page=${treatmentRequestPage}&limit=${limit}&userId=${user.id}`
+        `/api/treatment-request?page=${treatmentRequestPage}&limit=${limit}&status=ACCEPTED&userId=${user.id}`
       );
       if (!response.ok) {
         throw new Error("Network response was not ok");
@@ -224,4 +223,4 @@ const TreatmentRequest = () => {
   );
 };
 
-export default TreatmentRequest;
+export default Claims;

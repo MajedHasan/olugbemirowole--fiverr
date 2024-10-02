@@ -38,7 +38,7 @@ ChartJS.register(
   Legend
 );
 
-export default function ProviderDashboard() {
+const HospitalDashboard = () => {
   const [isPopupVisible, setIsPopupVisible] = useState(false);
 
   const data = {
@@ -99,4 +99,6 @@ export default function ProviderDashboard() {
       </div>
     </>
   );
-}
+};
+
+export default HospitalDashboard;

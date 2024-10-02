@@ -10,68 +10,89 @@ export async function GET(req) {
   const search = searchParams.get("search") || "";
   const page = parseInt(searchParams.get("page")) || 1;
   const limit = parseInt(searchParams.get("limit")) || 10;
+  const status = searchParams.get("status"); // Retrieve status as a string
+  const userId = searchParams.get("userId"); // Retrieve user ID if provided
 
   const skip = (page - 1) * limit;
-  const treatmentRequests = await prisma.treatmentRequest.findMany({
-    where: {
-      AND: [
-        {
-          OR: [
-            {
-              enrollee: {
-                contains: search,
-                //  mode: "insensitive"
-              },
-            },
-            {
-              hospitalName: {
-                contains: search,
-                // mode: "insensitive"
-              },
-            },
-          ],
-        },
-        {
-          // Add additional filters here if needed
-        },
-      ],
-    },
-    skip: skip,
-    take: limit,
-    orderBy: { createdAt: "desc" },
-    include: {
-      diagnoses: true, // Include associated diagnoses
-      treatments: true, // Include associated treatments
-    },
-  });
 
-  const totalCount = await prisma.treatmentRequest.count({
-    where: {
-      AND: [
-        {
-          OR: [
-            {
-              enrollee: {
-                contains: search,
-                // mode: "insensitive"
-              },
-            },
-            {
-              hospitalName: {
-                contains: search,
-                // mode: "insensitive"
-              },
-            },
-          ],
-        },
-        {
-          // Add additional filters here if needed
-        },
-      ],
-    },
-  });
+  try {
+    let hospitalId;
 
-  return NextResponse.json({ treatmentRequests, totalCount });
+    // If userId is provided, fetch the hospital associated with that user
+    if (userId) {
+      const hospital = await prisma.hospital.findUnique({
+        where: { userId: parseInt(userId) },
+        select: { id: true }, // Only select the hospital ID
+      });
+
+      hospitalId = hospital ? hospital.id : null; // Get hospital ID or null if not found
+    }
+
+    const treatmentRequests = await prisma.treatmentRequest.findMany({
+      where: {
+        AND: [
+          {
+            OR: [
+              {
+                enrollee: {
+                  contains: search,
+                  // mode: "insensitive", // Uncomment for case-insensitive search
+                },
+              },
+              {
+                hospitalName: {
+                  contains: search,
+                  // mode: "insensitive", // Uncomment for case-insensitive search
+                },
+              },
+            ],
+          },
+          ...(status ? [{ status }] : []), // Include status condition
+          ...(hospitalId ? [{ hospitalId }] : []), // Include hospitalId condition if found
+        ],
+      },
+      skip: skip,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      include: {
+        diagnoses: true, // Include associated diagnoses
+        treatments: true, // Include associated treatments
+      },
+    });
+
+    const totalCount = await prisma.treatmentRequest.count({
+      where: {
+        AND: [
+          {
+            OR: [
+              {
+                enrollee: {
+                  contains: search,
+                  // mode: "insensitive", // Uncomment for case-insensitive search
+                },
+              },
+              {
+                hospitalName: {
+                  contains: search,
+                  // mode: "insensitive", // Uncomment for case-insensitive search
+                },
+              },
+            ],
+          },
+          ...(status ? [{ status }] : []), // Include status condition
+          ...(hospitalId ? [{ hospitalId }] : []), // Include hospitalId condition if found
+        ],
+      },
+    });
+
+    return NextResponse.json({ treatmentRequests, totalCount });
+  } catch (error) {
+    console.error("Error fetching treatment requests:", error);
+    return NextResponse.json(
+      { error: "Error fetching treatment requests." },
+      { status: 500 }
+    );
+  }
 }
 
 // Fetch a single treatment request by ID
@@ -114,7 +135,13 @@ export async function POST(req) {
     treatments, // Use IDs of treatments
     status = "PENDING",
   } = await req.json();
-  const adminUserId = 1; // Replace with actual admin user ID logic
+
+  const findHospital = await prisma.hospital.findUnique({
+    where: { id: hospitalId },
+    include: {
+      user: true,
+    },
+  });
 
   try {
     const treatmentRequest = await prisma.treatmentRequest.create({
@@ -142,7 +169,7 @@ export async function POST(req) {
     const notificationMessage = `A new treatment request has been submitted by ${hospitalName} for policy number ${policyNo}.`;
 
     // Send notifications
-    await sendNotification(adminUserId, notificationMessage, "DB");
+    await sendNotification(findHospital?.user?.id, notificationMessage, "DB");
     await sendNotification(
       [
         "mdmajedhasan01811@gmail.com",

@@ -13,12 +13,24 @@ const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("dcPortal-user"));
+    setUser(user);
+  }, []);
+
+  const url =
+    user?.role === "HMO"
+      ? "/api/notifications"
+      : `/api/notifications?userId=${user?.id}`;
+
   const fetchNotifications = async () => {
-    const res = await fetch("/api/notifications");
+    const res = await fetch(url);
     const data = await res.json();
-    setNotifications(data);
-    setUnreadCount(data.filter((n) => !n.isRead).length);
-    console.log("checking");
+    console.log(data.notifications);
+    setNotifications(data?.notifications);
+    setUnreadCount(data?.notifications?.filter((n) => !n.isRead).length);
   };
 
   useEffect(() => {
@@ -28,7 +40,7 @@ const Notifications = () => {
     return () => {
       clearInterval(intervalId); // Cleanup interval on unmount
     };
-  }, []);
+  }, [user]);
 
   const handleMarkAsRead = async (id) => {
     try {
@@ -96,45 +108,50 @@ const Notifications = () => {
         )}
       </div>
       <Divider style={{ margin: 0 }} />
-      <List
-        dataSource={notifications}
-        renderItem={(item) => (
-          <List.Item
-            onClick={() => !item.isRead && handleMarkAsRead(item.id)}
-            style={{
-              cursor: item.isRead ? "default" : "pointer",
-              padding: "10px 20px",
-              backgroundColor: item.isRead ? "#f0f2f5" : "#e6f7ff",
-              borderBottom: "1px solid #f0f0f0",
-              transition: "background-color 0.3s ease",
-            }}
-            onMouseEnter={(e) => {
-              if (!item.isRead)
-                e.currentTarget.style.backgroundColor = "#e6f7ff";
-            }}
-            onMouseLeave={(e) => {
-              if (!item.isRead) e.currentTarget.style.backgroundColor = "#fff";
-            }}
-          >
-            <div className="flex items-center">
-              {item.isRead ? (
-                <CheckCircleOutlined className="text-green-500 mr-2" />
-              ) : (
-                <InfoCircleOutlined className="text-blue-500 mr-2" />
-              )}
-              <div style={{ flex: 1 }}>
-                <Text strong={!item.isRead}>{item.message}</Text>
-                <div style={{ fontSize: "12px", color: "#888" }}>
-                  {moment(item.createdAt).fromNow()}
+      <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+        {" "}
+        {/* Add this */}
+        <List
+          dataSource={notifications}
+          renderItem={(item) => (
+            <List.Item
+              onClick={() => !item.isRead && handleMarkAsRead(item.id)}
+              style={{
+                cursor: item.isRead ? "default" : "pointer",
+                padding: "10px 20px",
+                backgroundColor: item.isRead ? "#f0f2f5" : "#e6f7ff",
+                borderBottom: "1px solid #f0f0f0",
+                transition: "background-color 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                if (!item.isRead)
+                  e.currentTarget.style.backgroundColor = "#e6f7ff";
+              }}
+              onMouseLeave={(e) => {
+                if (!item.isRead)
+                  e.currentTarget.style.backgroundColor = "#fff";
+              }}
+            >
+              <div className="flex items-center">
+                {item.isRead ? (
+                  <CheckCircleOutlined className="text-green-500 mr-2" />
+                ) : (
+                  <InfoCircleOutlined className="text-blue-500 mr-2" />
+                )}
+                <div style={{ flex: 1 }}>
+                  <Text strong={!item.isRead}>{item.message}</Text>
+                  <div style={{ fontSize: "12px", color: "#888" }}>
+                    {moment(item.createdAt).fromNow()}
+                  </div>
                 </div>
               </div>
-            </div>
-          </List.Item>
-        )}
-        locale={{
-          emptyText: "No notifications",
-        }}
-      />
+            </List.Item>
+          )}
+          locale={{
+            emptyText: "No notifications",
+          }}
+        />
+      </div>
     </div>
   );
 
