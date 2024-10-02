@@ -38,25 +38,25 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
 
   // Fetch Hospital from the Hospital API using User Id
   useEffect(() => {
-    const fetchDiagnosisOptions = async () => {
+    const fetchHospital = async () => {
+      if (!user) return; // Ensure user is available
+
       try {
         const response = await fetch(`/api/hospital/single?id=${user.id}`); // Adjust the endpoint
         const data = await response.json();
         setHospital(data); // Assuming data is an array of diagnosis options
-        console.log("Before Hospital", data);
         setFormData({
           ...formData,
           hospitalEmail: data.email,
           hospitalPhone: data.phoneNumber,
           hospitalName: data.hospitalName,
         });
-        console.log("After Hospital", data);
       } catch (error) {
         message.error("Error fetching Hospital options");
       }
     };
 
-    fetchDiagnosisOptions();
+    fetchHospital();
   }, [user]);
 
   // Fetch Diagnosis options from the Diagnosis API
@@ -89,7 +89,6 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
         setLoadingTreatment(false);
       }
     };
-
     fetchTreatmentOptions();
   }, []);
 
