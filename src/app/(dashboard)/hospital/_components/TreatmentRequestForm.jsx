@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, Modal, message, Select } from "antd";
-import { uploadFileToFirebase } from "@/lib/firebase";
+// import { uploadFileToFirebase } from "@/lib/firebase";
 import { Input } from "@/components/ui/input";
 
 const TreatmentRequestForm = ({ visible, onClose }) => {
@@ -114,7 +114,7 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
     // Upload file to Firebase and get the URL
     if (formData.receipt) {
       try {
-        receiptUrl = await uploadFileToFirebase(formData.receipt);
+        // receiptUrl = await uploadFileToFirebase(formData.receipt);
       } catch (uploadError) {
         message.error("Error uploading receipt. Please try again.");
         return;
