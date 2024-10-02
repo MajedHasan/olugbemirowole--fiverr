@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, Modal, message, Select } from "antd";
-import { uploadFileToFirebase } from "@/lib/firebase"; // Adjust the path as necessary
+import { uploadFileToFirebase } from "@/lib/firebase";
 import { Input } from "@/components/ui/input";
 
 const TreatmentRequestForm = ({ visible, onClose }) => {
