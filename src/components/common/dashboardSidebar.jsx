@@ -11,6 +11,7 @@ import {
 } from "react-icons/fa";
 import { Button } from "../ui/button";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 const DashboardSidebar = ({ role, closeSidebar }) => {
   const router = useRouter();
@@ -76,7 +77,15 @@ const DashboardSidebar = ({ role, closeSidebar }) => {
   return (
     <div className="bg-fourth text-white w-64 h-full shadow-lg flex flex-col justify-between">
       <div className="flex flex-col gap-2">
-        <div className="p-4 text-2xl font-bold">Dashboard</div>
+        <div className="p-4 text-2xl font-bold">
+          <Image
+            src={"/img/favicon.png"}
+            alt="Logo"
+            width={500}
+            height={500}
+            className="w-full h-fit max-w-[60px] mx-auto rounded-full"
+          />
+        </div>
         <nav>
           <ul className="mt-4">
             {links[role].map((link) => (
