@@ -169,6 +169,7 @@ const Hospitals = () => {
   };
 
   const handleBulkUpload = async () => {
+    setLoading(true);
     const formData = new FormData();
     fileList.forEach((file) => formData.append("file", file));
     try {
@@ -186,6 +187,7 @@ const Hospitals = () => {
     } catch (error) {
       message.error("Bulk upload failed.");
     }
+    setLoading(false);
   };
 
   return (
@@ -254,8 +256,9 @@ const Hospitals = () => {
                 type="primary"
                 onClick={handleBulkUpload}
                 className="!bg-primary"
+                disabled={loading ? true : false}
               >
-                Upload
+                {loading ? "Uploading..." : "Upload"}
               </Button>
             </Form.Item>
           </Form>

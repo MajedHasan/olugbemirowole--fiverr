@@ -1,35 +1,40 @@
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
+datasource db {
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
 model User {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  email     String   @unique
-  name      String?
-  password  String
-  role      Role     @default(ENROLLEES)
-  posts     Post[]
+  id           Int           @id @default(autoincrement())
+  createdAt    DateTime      @default(now())
+  email        String?        @unique
+  name         String?
+  password     String
+  role         Role          @default(ENROLLEES)
+  Enrollee     Enrollee?
+  HMO          HMO?
+  Hospital     Hospital?
+  Organisation Organisation?
+  posts        Post[]
 }
 
 model Enrollee {
-  id               Int               @id @default(autoincrement())
-  fullName         String
-  policyNo         String
-  company          String
-  planType         String
-  phoneNumber      String
-  status           Status             @default(ACTIVE)
-  hospital         String
-  noOfDependents   Int
-  dependents       Dependent[]
-  userId           Int?               @unique
+  id             Int         @id @default(autoincrement())
+  fullName       String
+  policyNo       String
+  company        String
+  planType       String
+  phoneNumber    String
+  status         Status      @default(ACTIVE)
+  hospital       String
+  noOfDependents Int
+  userId         Int?        @unique
+  dependents     Dependent[]
+  user           User?       @relation(fields: [userId], references: [id])
 }
 
 model Dependent {
@@ -37,35 +42,39 @@ model Dependent {
   name       String
   enrolleeId Int
   enrollee   Enrollee @relation(fields: [enrolleeId], references: [id])
+
+  @@index([enrolleeId], map: "Dependent_enrolleeId_fkey")
 }
 
 model Hospital {
-  id              Int     @id @default(autoincrement())
-  hospitalName    String
-  hospitalAddress String
-  phoneNumber     String
-  email           String
-  userId          Int?    @unique
-
-  treatmentRequests TreatmentRequest[]  @relation("HospitalRequests")
+  id                Int                @id @default(autoincrement())
+  email             String
+  hospitalAddress   String
+  hospitalName      String
+  phoneNumber       String
+  userId            Int?               @unique
+  user              User?              @relation(fields: [userId], references: [id])
+  treatmentRequests TreatmentRequest[] @relation("HospitalRequests")
 }
 
 model Organisation {
-  id                   Int     @id @default(autoincrement())
+  id                   Int    @id @default(autoincrement())
   companyName          String
   companyID            String
   phoneNumber          String
   email                String
   clientServiceOfficer String
-  userId               Int?    @unique
+  userId               Int?   @unique
+  user                 User?  @relation(fields: [userId], references: [id])
 }
 
 model HMO {
-  id              Int     @id @default(autoincrement())
-  phoneNumber     String
-  email           String
-  permissions     Permission
-  userId          Int?    @unique
+  id          Int        @id @default(autoincrement())
+  email       String
+  permissions Permission
+  phoneNumber String
+  userId      Int?       @unique
+  user        User?      @relation(fields: [userId], references: [id])
 }
 
 model Post {
@@ -74,55 +83,56 @@ model Post {
   updatedAt DateTime @updatedAt
   published Boolean  @default(false)
   title     String   @db.VarChar(255)
-  author    User?    @relation(fields: [authorId], references: [id])
   authorId  Int?
+  author    User?    @relation(fields: [authorId], references: [id])
+
+  @@index([authorId], map: "Post_authorId_fkey")
 }
 
 model Diagnosis {
   id          Int                @id @default(autoincrement())
-  code        String             @unique // Unique code for diagnosis
   name        String
-  description String?            // Optional description
+  description String?
+  code        String             @unique
   requests    TreatmentRequest[] @relation("DiagnosisRequests")
 }
 
-
 model Treatment {
   id          Int                @id @default(autoincrement())
-  serviceName String             // Service name
-  description String?            // Optional description
-  price       Float              // Price of the treatment
+  description String?
+  price       Float
+  serviceName String
   requests    TreatmentRequest[] @relation("TreatmentRequests")
 }
 
-
 model TreatmentRequest {
-  id               Int          @id @default(autoincrement())
-  hospitalId       Int          // Foreign key to Enrollee
-  hospital         Hospital     @relation("HospitalRequests", fields: [hospitalId], references: [id])
-  enrollee     String
-  policyNo         String
-  healthPlan       String
-  treatmentCost    Float
-  receipt          String?      // Optional field to store URL of uploaded receipt
-  hospitalName     String
-  hospitalEmail    String
-  hospitalPhone    String?      // Optional field
-  status           String       @default("PENDING")
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  id            Int         @id @default(autoincrement())
+  policyNo      String
+  healthPlan    String
+  treatmentCost Float
+  receipt       String?
+  hospitalEmail String
+  hospitalPhone String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  hospitalId    Int
+  hospitalName  String
+  enrollee      String
+  status        String      @default("PENDING")
+  hospital      Hospital    @relation("HospitalRequests", fields: [hospitalId], references: [id])
+  diagnoses     Diagnosis[] @relation("DiagnosisRequests")
+  treatments    Treatment[] @relation("TreatmentRequests")
 
-  diagnoses        Diagnosis[]   @relation("DiagnosisRequests")
-  treatments       Treatment[]    @relation("TreatmentRequests")
+  @@index([hospitalId], map: "TreatmentRequest_hospitalId_fkey")
 }
 
 model Notification {
-  id          Int      @id @default(autoincrement())
-  userId      Int?     // Optional: associate with a user if needed
-  message     String
-  type        String   // Type of notification (e.g., 'SMS', 'Email', 'Dashboard')
-  isRead      Boolean   @default(false)
-  createdAt   DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 enum Role {

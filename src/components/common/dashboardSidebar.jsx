@@ -1,6 +1,5 @@
 "use client";
 
-// import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   FaHospital,
@@ -13,7 +12,7 @@ import {
 import { Button } from "../ui/button";
 import { useRouter } from "next/navigation";
 
-const DashboardSidebar = ({ role }) => {
+const DashboardSidebar = ({ role, closeSidebar }) => {
   const router = useRouter();
 
   const links = {
@@ -55,11 +54,7 @@ const DashboardSidebar = ({ role }) => {
       { href: "/hmo/payouts", label: "Payouts", icon: <FaMoneyCheck /> },
     ],
     ORGANISATION: [
-      {
-        href: "/organisation",
-        label: "Dashboard",
-        icon: <FaChartLine />,
-      },
+      { href: "/organisation", label: "Dashboard", icon: <FaChartLine /> },
       {
         href: "/organisation/enrollees",
         label: "Manage Enrollees",
@@ -79,7 +74,7 @@ const DashboardSidebar = ({ role }) => {
   };
 
   return (
-    <div className="bg-fourth text-white w-64 h-full shadow-lg flex flex-col justify-between gap-4">
+    <div className="bg-fourth text-white w-64 h-full shadow-lg flex flex-col justify-between">
       <div className="flex flex-col gap-2">
         <div className="p-4 text-2xl font-bold">Dashboard</div>
         <nav>
@@ -89,6 +84,7 @@ const DashboardSidebar = ({ role }) => {
                 <Link
                   href={link.href}
                   className="flex items-center p-4 hover:bg-gray-700"
+                  onClick={closeSidebar}
                 >
                   <span className="mr-3">{link.icon}</span>
                   {link.label}

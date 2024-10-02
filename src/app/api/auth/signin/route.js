@@ -4,43 +4,93 @@ import bcrypt from "bcrypt";
 const prisma = new PrismaClient();
 
 export async function POST(req) {
-  const body = await req.json(); // Use `req.json()` to parse the request body
-  const { email, password } = body;
+  const body = await req.json();
+  const { loginIdentifier, password } = body;
 
-  if (!email || !password) {
+  // return new Response(JSON.stringify({ body }));
+
+  if (!loginIdentifier || !password) {
     return new Response(
-      JSON.stringify({ message: "Email and password are required" }),
+      JSON.stringify({ message: "Login identifier and password are required" }),
       { status: 400 }
     );
   }
 
   try {
-    // Check if the user exists
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Attempt to find user by email
+    let user = await prisma.user.findUnique({
+      where: { email: loginIdentifier },
     });
 
+    // If not found, check enrollee by policyNo
     if (!user) {
-      return new Response(
-        JSON.stringify({ message: "Invalid email or password" }),
-        { status: 401 }
-      );
+      const enrollee = await prisma.enrollee.findFirst({
+        where: { policyNo: loginIdentifier },
+        include: { user: true }, // To get the associated user
+      });
+
+      if (enrollee && enrollee.user) {
+        user = enrollee.user; // Set user to the associated user
+      }
     }
 
-    // Compare the provided password with the stored hashed password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    // If not found, check enrollee by phone number
+    if (!user) {
+      const enrollee = await prisma.enrollee.findFirst({
+        where: { phoneNumber: loginIdentifier },
+        include: { user: true }, // To get the associated user
+      });
 
-    if (!isPasswordValid) {
-      return new Response(
-        JSON.stringify({ message: "Invalid email or password" }),
-        { status: 401 }
-      );
+      if (enrollee && enrollee.user) {
+        user = enrollee.user; // Set user to the associated user
+      }
     }
 
-    // For now, just return success (in a real-world app, you'd return a token or set a session)
+    // If still not found, check hospital, organisation, or hmo
+    if (!user) {
+      const hospital = await prisma.hospital.findFirst({
+        where: { phoneNumber: loginIdentifier },
+        include: { user: true },
+      });
+      if (hospital && hospital.user) {
+        user = hospital.user;
+      }
+
+      if (!user) {
+        const organisation = await prisma.organisation.findFirst({
+          where: { phoneNumber: loginIdentifier },
+          include: { user: true },
+        });
+        if (organisation && organisation.user) {
+          user = organisation.user;
+        }
+      }
+
+      if (!user) {
+        const hmo = await prisma.hMO.findFirst({
+          where: { phoneNumber: loginIdentifier },
+          include: { user: true },
+        });
+        if (hmo && hmo.user) {
+          user = hmo.user;
+        }
+      }
+    }
+
+    // If user is found, verify the password
+    if (user) {
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (isPasswordValid) {
+        return new Response(
+          JSON.stringify({ message: "Login successful", data: user }),
+          { status: 200 }
+        );
+      }
+    }
+
     return new Response(
-      JSON.stringify({ message: "Login successful", data: user }),
-      { status: 200 }
+      JSON.stringify({ message: "Invalid login credentials" }),
+      { status: 401 }
     );
   } catch (error) {
     console.error(error);

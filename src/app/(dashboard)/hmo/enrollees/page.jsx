@@ -188,6 +188,7 @@ const Enrollees = () => {
   };
 
   const handleBulkUpload = async () => {
+    setLoading(true);
     const formData = new FormData();
     fileList.forEach((file) => formData.append("file", file));
     try {
@@ -205,6 +206,7 @@ const Enrollees = () => {
     } catch (error) {
       message.error("Bulk upload failed.");
     }
+    setLoading(false);
   };
 
   const addDependent = () => {
@@ -298,8 +300,13 @@ const Enrollees = () => {
 
             {/* Add a submit button inside the form */}
             <Form.Item className="text-right">
-              <Button type="primary" htmlType="submit" className="!bg-primary">
-                Upload
+              <Button
+                type="primary"
+                htmlType="submit"
+                className="!bg-primary"
+                disabled={loading ? true : false}
+              >
+                {loading ? "Uploading..." : "Upload"}
               </Button>
             </Form.Item>
           </Form>

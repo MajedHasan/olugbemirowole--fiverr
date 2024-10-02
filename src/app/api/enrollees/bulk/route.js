@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import * as xlsx from "xlsx";
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
@@ -49,10 +50,33 @@ export async function POST(req) {
       status: enrollee.status.toUpperCase(), // Convert status to uppercase
     }));
 
-    // Insert enrollees data into the database
-    await prisma.enrollee.createMany({
-      data: enrollees,
-    });
+    // Insert enrollees data into the database and create user for each enrollee
+    for (const enrollee of enrollees) {
+      const role = "ENROLLEES";
+      const defaultPassword = "123456";
+      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+      // Create new user for each enrollee
+      const user = await prisma.user.create({
+        data: {
+          password: hashedPassword,
+          role, // Store the role
+        },
+      });
+
+      // Create enrollee associated with the user
+      await prisma.enrollee.create({
+        data: {
+          ...enrollee,
+          userId: user.id, // Associate enrollee with the newly created user
+          noOfDependents: parseInt(enrollee.noOfDependents, 10) || 0, // Safe conversion
+          dependents:
+            enrollee?.dependents?.length > 0
+              ? { create: enrollee.dependents.map((dep) => ({ name: dep })) }
+              : undefined, // Don't create dependents if the array is empty
+        },
+      });
+    }
 
     return NextResponse.json({ message: "Bulk upload successful" });
   } catch (error) {

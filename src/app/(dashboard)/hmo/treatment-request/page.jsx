@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
-import { Modal, Button } from "antd"; // Assuming you have Ant Design for UI
+import { Modal, Button, Form, Input, Select, Badge } from "antd"; // Import Badge and Form components
+
+const { Option } = Select;
 
 const TreatmentRequestPage = () => {
   const [treatmentRequests, setTreatmentRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [currentTreatment, setCurrentTreatment] = useState(null);
+  const [form] = Form.useForm(); // Create a form instance
 
   // Fetch treatment requests data
   useEffect(() => {
@@ -38,7 +41,9 @@ const TreatmentRequestPage = () => {
 
   // Open modal for editing
   const handleEdit = (row) => {
+    console.log(row);
     setCurrentTreatment(row); // Store the row data for editing
+    form.setFieldsValue(row); // Populate form fields with current treatment data
     setIsModalVisible(true); // Open the modal
   };
 
@@ -46,6 +51,41 @@ const TreatmentRequestPage = () => {
   const handleCancel = () => {
     setIsModalVisible(false);
     setCurrentTreatment(null);
+  };
+
+  const handleFinish = async (values) => {
+    const udpatedTreatmentRequest = {
+      ...currentTreatment,
+      status: values.status,
+      policyNo: values.policyNo,
+      enrollee: values.enrollee,
+      treatmentCost: values.treatmentCost,
+    };
+
+    try {
+      const response = await fetch(`/api/treatment-request`, {
+        method: "PUT", // or PATCH depending on your API design
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(udpatedTreatmentRequest), // Send the edited values to your API
+      });
+
+      if (response.ok) {
+        const updatedTreatment = await response.json();
+        // Update the treatmentRequests state with the updated treatment
+        setTreatmentRequests((prevRequests) =>
+          prevRequests.map((request) =>
+            request.id === updatedTreatment.id ? updatedTreatment : request
+          )
+        );
+        handleCancel(); // Close the modal after successful update
+      } else {
+        console.error("Failed to update the treatment request");
+      }
+    } catch (error) {
+      console.error("Error updating treatment request:", error);
+    }
   };
 
   const columns = [
@@ -86,7 +126,9 @@ const TreatmentRequestPage = () => {
     },
     {
       name: "Status",
-      selector: (row) => row?.status || "N/A",
+      selector: (row) => (
+        <Badge status={getStatusBadge(row.status)} text={row.status} />
+      ),
       sortable: true,
     },
     {
@@ -105,6 +147,19 @@ const TreatmentRequestPage = () => {
     },
   ];
 
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "PENDING":
+        return "default"; // Grey
+      case "ACCEPTED":
+        return "processing"; // Green
+      case "COMPLETED":
+        return "success"; // Blue
+      default:
+        return "default"; // Fallback
+    }
+  };
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Treatment Requests</h1>
@@ -120,46 +175,96 @@ const TreatmentRequestPage = () => {
       {currentTreatment && (
         <Modal
           title="Edit Treatment Request"
-          visible={isModalVisible}
+          open={isModalVisible}
           onCancel={handleCancel}
           footer={null}
           style={{ top: 20 }} // Adjust modal position if needed
         >
-          <div style={{ maxHeight: "400px", overflowY: "scroll" }}>
-            <p>
-              <strong>ID:</strong> {currentTreatment.id}
-            </p>
-            <p>
-              <strong>Enrollee:</strong> {currentTreatment.enrollee}
-            </p>
-            <p>
-              <strong>Policy Number:</strong> {currentTreatment.policyNo}
-            </p>
-            <p>
-              <strong>Treatment Cost:</strong> {currentTreatment.treatmentCost}
-            </p>
-            <p>
-              <strong>Diagnoses:</strong>
-            </p>
-            <ul>
-              {currentTreatment.diagnoses.map((diagnosis) => (
-                <li key={diagnosis.id}>
-                  <strong>{diagnosis.code}</strong>
-                </li>
-              ))}
-            </ul>
-            <p>
-              <strong>Treatments:</strong>
-            </p>
-            <ul>
-              {currentTreatment.treatments.map((treatment) => (
-                <li key={treatment.id}>
-                  <strong>{treatment.serviceName}</strong>
-                </li>
-              ))}
-            </ul>
-            <Button onClick={handleCancel}>Close</Button>
-          </div>
+          <Form form={form} onFinish={handleFinish}>
+            <Form.Item name="id" label="ID">
+              <Input disabled />
+            </Form.Item>
+            <Form.Item
+              name="enrollee"
+              label="Enrollee"
+              rules={[{ required: true }]}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name="policyNo"
+              label="Policy Number"
+              rules={[{ required: true }]}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name="treatmentCost"
+              label="Treatment Cost"
+              rules={[{ required: true }]}
+            >
+              <Input type="number" />
+            </Form.Item>
+            <Form.Item name="status" label="Status">
+              <Select>
+                <Option
+                  value="PENDING"
+                  disabled={
+                    currentTreatment.status === "PENDING"
+                      ? false
+                      : currentTreatment.status === "ACCEPTED"
+                      ? true
+                      : true
+                  }
+                >
+                  Pending
+                </Option>
+                <Option
+                  value="ACCEPTED"
+                  disabled={
+                    currentTreatment.status === "COMPLETED" ? true : false
+                  }
+                >
+                  Accepted
+                </Option>
+                <Option value="COMPLETED">Completed</Option>
+              </Select>
+            </Form.Item>
+            <div className="border rounded p-2 shadow mb-4">
+              <label
+                htmlFor=""
+                className="font-semibold underline underline-offset-4 mb-2 block"
+              >
+                Diagnosis
+              </label>
+              <ul className="list-disc pl-5">
+                {currentTreatment?.diagnoses?.map((diagnos) => (
+                  <li key={diagnos.id}>{diagnos?.description}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="border rounded p-2 shadow mb-4">
+              <label
+                htmlFor=""
+                className="font-semibold underline underline-offset-4 mb-2 block"
+              >
+                Treatments
+              </label>
+              <ul className="list-disc pl-5">
+                {currentTreatment?.treatments?.map((treatment) => (
+                  <li key={treatment.id}>{treatment?.serviceName}</li>
+                ))}
+              </ul>
+            </div>
+            <Form.Item>
+              <Button type="primary" htmlType="submit">
+                Save
+              </Button>
+              <Button style={{ marginLeft: "10px" }} onClick={handleCancel}>
+                Cancel
+              </Button>
+            </Form.Item>
+          </Form>
         </Modal>
       )}
     </div>

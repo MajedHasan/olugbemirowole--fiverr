@@ -170,6 +170,17 @@ export async function PUT(req) {
   const { id, ...data } = await req.json();
 
   try {
+    const findTreatmentRequest = await prisma.treatmentRequest.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    const findHospital = await prisma.hospital.findUnique({
+      where: { id: data.hospitalId },
+      include: {
+        user: true,
+      },
+    });
+
     const updatedRequest = await prisma.treatmentRequest.update({
       where: { id: parseInt(id) },
       data: {
@@ -186,6 +197,29 @@ export async function PUT(req) {
           : undefined, // Update treatments if provided
       },
     });
+
+    if (
+      data.status === "ACCEPTED" &&
+      findTreatmentRequest.status === "PENDING"
+    ) {
+      // Create notification message
+      const notificationMessage = `Treatment request has been Accepted by HMO for policy number ${data.policyNo}.`;
+
+      // Send notifications
+      await sendNotification(findHospital.user.id, notificationMessage, "DB");
+      await sendNotification(
+        [
+          "mdmajedhasan01811@gmail.com",
+          "noreply@sterlinghealthhmo.com",
+          "Claims@sterlinghealthmcs.com",
+          "Claims@sterlinghealthhmo.com",
+        ],
+        notificationMessage,
+        "Email"
+      );
+      // await sendNotification("+2348034586746", notificationMessage, "SMS");
+    }
+
     return NextResponse.json(updatedRequest);
   } catch (error) {
     return NextResponse.json(

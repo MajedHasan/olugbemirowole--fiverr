@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
@@ -25,17 +26,32 @@ export async function POST(req) {
     const { hospitalName, hospitalAddress, phoneNumber, email, userId } =
       await req.json();
 
-    const newHospital = await prisma.hospital.create({
+    const role = "HOSPITAL";
+    const defaultPassword = "123456";
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    // Create new user
+    const user = await prisma.user.create({
       data: {
-        hospitalName,
-        hospitalAddress,
-        phoneNumber: phoneNumber.toString(), // Ensure phone number is a string
-        email,
-        userId: userId || null, // Set userId to null if not provided
+        password: hashedPassword,
+        role, // Store the role
       },
     });
 
-    return NextResponse.json(newHospital, { status: 201 });
+    if (user) {
+      // Create new enrollee
+      const newHospital = await prisma.hospital.create({
+        data: {
+          hospitalName,
+          hospitalAddress,
+          phoneNumber: phoneNumber.toString(), // Ensure phone number is a string
+          email,
+          userId: user.id,
+        },
+      });
+
+      return NextResponse.json(newHospital);
+    }
   } catch (error) {
     console.error("Error creating hospital:", error);
     return NextResponse.json(
@@ -77,9 +93,34 @@ export async function DELETE(req) {
   try {
     const { id } = await req.json();
 
+    // Retrieve the hospital to get the associated userId
+    const hospital = await prisma.hospital.findUnique({
+      where: { id },
+      select: { userId: true }, // Only select userId
+    });
+
+    if (!hospital) {
+      return NextResponse.json(
+        { error: "Hospital not found." },
+        { status: 404 }
+      );
+    }
+
+    // Delete any treatment request records (if applicable)
+    await prisma.treatmentRequest.deleteMany({
+      where: { hospitalId: id }, // Assuming Dependent has an hospitalId field
+    });
+
     await prisma.hospital.delete({
       where: { id },
     });
+
+    // Delete the associated user
+    if (hospital.userId) {
+      await prisma.user.delete({
+        where: { id: hospital.userId },
+      });
+    }
 
     return NextResponse.json({ message: "Hospital deleted successfully" });
   } catch (error) {

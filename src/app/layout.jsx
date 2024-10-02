@@ -1,4 +1,7 @@
 import localFont from "next/font/local";
+// import "antd/dist/reset.css"; // For resetting styles
+// import "antd/dist/antd.variable.css"; // For theme customization (if applicable)
+
 import "./globals.css";
 
 const geistSans = localFont({

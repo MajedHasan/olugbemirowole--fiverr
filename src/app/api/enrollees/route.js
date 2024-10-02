@@ -1,6 +1,7 @@
 // src/app/api/enrollees/route.js
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
@@ -21,35 +22,68 @@ export async function GET(req) {
 
 // Create a single enrollee
 export async function POST(req) {
-  const body = await req.json();
-  // const {
-  //   fullName,
-  //   policyNo,
-  //   company,
-  //   planType,
-  //   phoneNumber,
-  //   status,
-  //   hospital,
-  //   noOfDependents,
-  // } = body;
+  try {
+    const body = await req.json();
+    const {
+      fullName,
+      policyNo,
+      company,
+      planType,
+      phoneNumber,
+      status,
+      hospital,
+      noOfDependents,
+      dependents = [], // Default to an empty array if not provided
+    } = body;
 
-  const enrollee = await prisma.enrollee.create({
-    data: {
-      fullName: body.fullName,
-      company: body.company,
-      policyNo: body.policyNo,
-      planType: body.planType,
-      phoneNumber: body.phoneNumber,
-      status: body.status,
-      hospital: body.hospital,
-      noOfDependents: parseInt(body.noOfDependents),
-      dependents: {
-        create: body.dependents.map((dep) => ({ name: dep })),
+    // Validate required fields
+    if (!fullName || !policyNo || !phoneNumber || !company || !planType) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    const role = "ENROLLEES";
+    const defaultPassword = "123456";
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    // Create new user
+    const user = await prisma.user.create({
+      data: {
+        password: hashedPassword,
+        role, // Store the role
       },
-    },
-  });
+    });
 
-  return NextResponse.json(enrollee);
+    if (user) {
+      // Create new enrollee
+      const enrollee = await prisma.enrollee.create({
+        data: {
+          fullName,
+          company,
+          policyNo,
+          planType,
+          phoneNumber,
+          status,
+          hospital,
+          noOfDependents: parseInt(noOfDependents, 10) || 0, // Default to 0 if conversion fails
+          dependents: {
+            create: dependents.map((dep) => ({ name: dep })),
+          },
+          userId: user.id, // Associate enrollee with the user
+        },
+      });
+
+      return NextResponse.json(enrollee);
+    }
+  } catch (error) {
+    console.error("Error creating enrollee:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
 }
 
 // Update a single enrollee
@@ -88,12 +122,58 @@ export async function PUT(req) {
 }
 
 // Delete a single enrollee
+// export async function DELETE(req) {
+//   const { id } = await req.json();
+
+//   await prisma.enrollee.delete({
+//     where: { id },
+//   });
+
+//   return NextResponse.json({ message: "Enrollee deleted successfully." });
+// }
+
 export async function DELETE(req) {
-  const { id } = await req.json();
+  try {
+    const { id } = await req.json();
 
-  await prisma.enrollee.delete({
-    where: { id },
-  });
+    // Retrieve the enrollee to get the associated userId
+    const enrollee = await prisma.enrollee.findUnique({
+      where: { id },
+      select: { userId: true }, // Only select userId
+    });
 
-  return NextResponse.json({ message: "Enrollee deleted successfully." });
+    if (!enrollee) {
+      return NextResponse.json(
+        { error: "Enrollee not found." },
+        { status: 404 }
+      );
+    }
+
+    // Delete any dependent records (if applicable)
+    await prisma.dependent.deleteMany({
+      where: { enrolleeId: id }, // Assuming Dependent has an enrolleeId field
+    });
+
+    // Delete the enrollee
+    await prisma.enrollee.delete({
+      where: { id },
+    });
+
+    // Delete the associated user
+    if (enrollee.userId) {
+      await prisma.user.delete({
+        where: { id: enrollee.userId },
+      });
+    }
+
+    return NextResponse.json({
+      message: "Enrollee and associated user deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Error deleting enrollee:", error);
+    return NextResponse.json(
+      { error: "Failed to delete enrollee." },
+      { status: 500 }
+    );
+  }
 }

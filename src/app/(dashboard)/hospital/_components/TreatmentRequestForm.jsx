@@ -16,8 +16,8 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
     receipt: null,
     treatments: [],
     hospitalName: "Sample Hospital", // Sample value, modify as necessary
-    hospitalEmail: "hospital@example.com", // Sample value, modify as necessary
-    hospitalPhone: "123-456-7890", // Sample value, modify as necessary
+    email: "hospital@example.com", // Sample value, modify as necessary
+    phoneNumber: "123-456-7890", // Sample value, modify as necessary
   });
 
   const [diagnosisOptions, setDiagnosisOptions] = useState([]);
@@ -31,7 +31,8 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
   useEffect(() => {
     const storedUser = localStorage.getItem("dcPortal-user");
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const jsonUser = JSON.parse(storedUser);
+      setUser(jsonUser);
     }
   }, []); // Runs only once after the component mounts
 
@@ -42,7 +43,14 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
         const response = await fetch(`/api/hospital/single?id=${user.id}`); // Adjust the endpoint
         const data = await response.json();
         setHospital(data); // Assuming data is an array of diagnosis options
-        console.log("Hospital", data);
+        console.log("Before Hospital", data);
+        setFormData({
+          ...formData,
+          email: data.email,
+          phoneNumber: data.phoneNumber,
+          hospitalName: data.hospitalName,
+        });
+        console.log("After Hospital", data);
       } catch (error) {
         message.error("Error fetching Hospital options");
       }
@@ -287,27 +295,27 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
 
             {/* Hospital Email Field */}
             <div className="field">
-              <label className="block mb-1 font-medium" htmlFor="hospitalEmail">
+              <label className="block mb-1 font-medium" htmlFor="email">
                 Hospital Email
               </label>
               <Input
-                id="hospitalEmail"
-                name="hospitalEmail"
+                id="email"
+                name="email"
                 type="email"
-                value={formData.hospitalEmail}
+                value={formData.email}
                 disabled
               />
             </div>
 
             {/* Hospital Phone Field */}
             <div className="field">
-              <label className="block mb-1 font-medium" htmlFor="hospitalPhone">
+              <label className="block mb-1 font-medium" htmlFor="phoneNumber">
                 Hospital Phone
               </label>
               <Input
-                id="hospitalPhone"
-                name="hospitalPhone"
-                value={formData.hospitalPhone}
+                id="phoneNumber"
+                name="phoneNumber"
+                value={formData.phoneNumber}
                 disabled
               />
             </div>
