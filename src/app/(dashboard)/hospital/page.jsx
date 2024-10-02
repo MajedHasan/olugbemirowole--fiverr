@@ -24,7 +24,7 @@ import {
 import { FaDollarSign, FaUserAlt } from "react-icons/fa";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import TreatmentRequestForm from "./_components/TreatmentRequestForm";
+// import TreatmentRequestForm from "./_components/TreatmentRequestForm";
 
 // Register the components
 ChartJS.register(
@@ -58,10 +58,10 @@ const HospitalDashboard = () => {
     <>
       <div>
         <div className="flex items-center justify-end gap-4">
-          <TreatmentRequestForm
+          {/* <TreatmentRequestForm
             visible={isPopupVisible}
             onClose={() => setIsPopupVisible(false)}
-          />
+          /> */}
           <Button
             type="primary"
             onClick={() => setIsPopupVisible(true)}
