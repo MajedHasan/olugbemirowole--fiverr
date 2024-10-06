@@ -39,7 +39,7 @@ export async function POST(req) {
     });
 
     if (user) {
-      // Create new enrollee
+      // Create new Hospital
       const newHospital = await prisma.hospital.create({
         data: {
           hospitalName,

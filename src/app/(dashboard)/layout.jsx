@@ -11,6 +11,7 @@ const Layout = ({ children }) => {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [hospital, setHospital] = useState(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("dcPortal-user");
@@ -27,6 +28,19 @@ const Layout = ({ children }) => {
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+
+  useEffect(() => {
+    const fetchHospital = async () => {
+      const response = await fetch(`/api/hospital/single?id=${user?.id}`);
+      if (response.ok) {
+        setHospital(await response.json());
+      }
+    };
+
+    if (user?.role === "HOSPITAL") {
+      fetchHospital();
+    }
+  }, [user]);
 
   return (
     <main className="flex w-full h-screen overflow-hidden">
@@ -65,7 +79,7 @@ const Layout = ({ children }) => {
             {user?.role === "ENROLLEES"
               ? "Enrollee"
               : user?.role === "HOSPITAL"
-              ? "Provider Hospital"
+              ? hospital?.hospitalName
               : user?.role === "ORGANISATION"
               ? "Organisation"
               : "HMO"}

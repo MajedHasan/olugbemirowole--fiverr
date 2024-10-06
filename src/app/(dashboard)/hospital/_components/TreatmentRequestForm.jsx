@@ -149,7 +149,7 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
 
   return (
     <Modal
-      title="Request Treatment"
+      title="Submit Claim"
       open={visible}
       onCancel={onClose}
       footer={null}
@@ -226,6 +226,28 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
           <div className="field md:col-span-3">
             <label className="block mb-1 font-medium" htmlFor="treatments">
               Treatment <span className="text-red-500">*</span>
+            </label>
+            <Select
+              id="treatments"
+              name="treatments"
+              mode="multiple"
+              value={formData.treatments}
+              onChange={(value) => handleSelectChange("treatments", value)}
+              loading={loadingTreatment}
+              className="w-full"
+            >
+              {treatmentOptions?.map((treatment) => (
+                <Select.Option key={treatment.id} value={treatment.id}>
+                  {treatment.serviceName}
+                </Select.Option>
+              ))}
+            </Select>
+          </div>
+
+          {/* Drugs Field */}
+          <div className="field md:col-span-3">
+            <label className="block mb-1 font-medium" htmlFor="treatments">
+              Drugs <span className="text-red-500">*</span>
             </label>
             <Select
               id="treatments"

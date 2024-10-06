@@ -66,7 +66,14 @@ const HospitalDashboard = () => {
             onClick={() => setIsPopupVisible(true)}
             style={{ marginBottom: "16px" }}
           >
-            Request Treatment
+            Submit Claim
+          </Button>
+          <Button
+            type="primary"
+            onClick={() => setIsPopupVisible(true)}
+            style={{ marginBottom: "16px" }}
+          >
+            Request Authorization
           </Button>
         </div>
         <div className="grid xl:grid-cols-4 lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-10">
