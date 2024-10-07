@@ -47,14 +47,15 @@ model Dependent {
 }
 
 model Hospital {
-  id                Int                @id @default(autoincrement())
-  email             String
-  hospitalAddress   String
-  hospitalName      String
-  phoneNumber       String
-  userId            Int?               @unique
-  user              User?              @relation(fields: [userId], references: [id])
-  treatmentRequests TreatmentRequest[] @relation("HospitalRequests")
+  id                      Int                     @id @default(autoincrement())
+  email                   String
+  hospitalAddress         String
+  hospitalName            String
+  phoneNumber             String
+  userId                  Int?                    @unique
+  user                    User?                   @relation(fields: [userId], references: [id])
+  authorizationRequests   AuthorizationRequest[]  @relation("HospitalRequests") // Consider a distinct name for clarity
+  claimRequests          ClaimRequest[]         @relation("HospitalClaims") // Changed to avoid naming conflict
 }
 
 model Organisation {
@@ -75,6 +76,9 @@ model HMO {
   phoneNumber String
   userId      Int?       @unique
   user        User?      @relation(fields: [userId], references: [id])
+
+  AuthorizationRequest AuthorizationRequest[]
+  ClaimRequest ClaimRequest[]
 }
 
 model Post {
@@ -90,22 +94,56 @@ model Post {
 }
 
 model Diagnosis {
-  id          Int                @id @default(autoincrement())
-  name        String
-  description String?
-  code        String             @unique
-  requests    TreatmentRequest[] @relation("DiagnosisRequests")
+  id                      Int                     @id @default(autoincrement())
+  name                    String
+  description             String?
+  code                    String                  @unique
+  authorizationRequests   AuthorizationRequest[]  @relation("DiagnosisRequests_Authorization")
+  claimRequests          ClaimRequest[]         @relation("DiagnosisRequests_Claims")
+
 }
 
 model Treatment {
-  id          Int                @id @default(autoincrement())
-  description String?
-  price       Float
-  serviceName String
-  requests    TreatmentRequest[] @relation("TreatmentRequests")
+  id                        Int                     @id @default(autoincrement())
+  description               String?
+  price                     Float
+  name                      String
+  isApprovalRequired        Boolean
+  authorizationRequests     AuthorizationRequest[]  @relation("TreatmentRequests_Authorization")
+  claimRequests            ClaimRequest[]         @relation("TreatmentRequests_Claims")
 }
 
-model TreatmentRequest {
+model Drugs {
+  id                        Int                @id @default(autoincrement())
+  description               String?
+  price                     Float
+  name                      String
+  isApprovalRequired        Boolean
+  group                     String
+  authorizationRequestDrugs AuthorizationRequestDrugs[] // Ensure relation name is clear
+
+  claimRequestDrugs ClaimRequestDrugs[]
+}
+
+model AuthorizationRequestDrugs {
+  id                          Int                   @id @default(autoincrement())
+  drugId                      Int                   // Removed @unique to allow multiple entries
+  quantity                    Float
+  authorizationRequestId      Int
+  drugs                       Drugs                 @relation(fields: [drugId], references: [id])
+  authorizationRequest        AuthorizationRequest  @relation(fields: [authorizationRequestId], references: [id])
+}
+
+model ClaimRequestDrugs {
+  id                          Int                   @id @default(autoincrement())
+  drugId                      Int                   // Removed @unique to allow multiple entries
+  quantity                    Float
+  authorizationRequestId      Int
+  drugs                       Drugs                 @relation(fields: [drugId], references: [id])
+  claimRequest                ClaimRequest  @relation(fields: [authorizationRequestId], references: [id])
+}
+
+model AuthorizationRequest {
   id            Int         @id @default(autoincrement())
   policyNo      String
   healthPlan    String
@@ -118,13 +156,44 @@ model TreatmentRequest {
   hospitalId    Int
   hospitalName  String
   enrollee      String
+  submiterId    Int
+  submitedBy    String
+  responsedBy   Int?
+  hmo           HMO?         @relation(fields: [responsedBy], references: [id])
   status        String      @default("PENDING")
   hospital      Hospital    @relation("HospitalRequests", fields: [hospitalId], references: [id])
-  diagnoses     Diagnosis[] @relation("DiagnosisRequests")
-  treatments    Treatment[] @relation("TreatmentRequests")
+  diagnosis     Diagnosis[] @relation("DiagnosisRequests_Authorization")
+  treatments    Treatment[] @relation("TreatmentRequests_Authorization")
+  authorizationRequestDrugs AuthorizationRequestDrugs[] // Ensure this relation is clear
+}
+
+model ClaimRequest {
+  id            Int         @id @default(autoincrement())
+  policyNo      String
+  healthPlan    String
+  treatmentCost Float
+  receipt       String?
+  hospitalEmail String
+  hospitalPhone String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  hospitalId    Int
+  hospitalName  String
+  enrollee      String
+  submiterId    Int
+  submitedBy    String
+  responsedBy   Int?
+  hmo           HMO?         @relation(fields: [responsedBy], references: [id])
+  status        String      @default("ACCEPTED")
+  comment       String?
+  hospital      Hospital    @relation("HospitalClaims", fields: [hospitalId], references: [id])
+  diagnosis     Diagnosis[] @relation("DiagnosisRequests_Claims")
+  treatments    Treatment[] @relation("TreatmentRequests_Claims")
+  ClaimRequestDrugs ClaimRequestDrugs[]
 
   @@index([hospitalId], map: "TreatmentRequest_hospitalId_fkey")
 }
+
 
 model Notification {
   id        Int      @id @default(autoincrement())

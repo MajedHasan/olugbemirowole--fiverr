@@ -3,46 +3,66 @@
 import { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
 import { Modal, Button, Form, Input, Select, Badge } from "antd"; // Import Badge and Form components
+import TextArea from "antd/es/input/TextArea";
 
 const { Option } = Select;
 
-const TreatmentRequestPage = () => {
-  const [treatmentRequests, setTreatmentRequests] = useState([]);
+const ClaimRequestPage = () => {
+  const [authorizationRequests, setAuthorizationRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [currentTreatment, setCurrentTreatment] = useState(null);
+  const [currentAuthorization, setCurrentAuthorization] = useState(null);
   const [form] = Form.useForm(); // Create a form instance
+  const [user, setUser] = useState(null);
+  const [hmo, setHmo] = useState(null);
+
+  useEffect(() => {
+    const response = JSON.parse(localStorage.getItem("dcPortal-user"));
+    if (response) {
+      setUser(response);
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchHmo = async () => {
+      const response = await fetch(`/api/hmo/single?id=${user?.id}`);
+      if (response.ok) {
+        setHmo(await response.json());
+      }
+    };
+    if (user) fetchHmo();
+  }, [user]);
 
   // Fetch treatment requests data
   useEffect(() => {
-    const fetchTreatmentRequests = async () => {
+    const fetchAuthorizationRequests = async () => {
       try {
-        const response = await fetch("/api/treatment-request");
+        const response = await fetch("/api/claim-request");
         const data = await response.json();
         if (Array.isArray(data)) {
-          setTreatmentRequests(data);
+          setAuthorizationRequests(data);
         } else if (
-          data.treatmentRequests &&
-          Array.isArray(data.treatmentRequests)
+          data.authorizationRequests &&
+          Array.isArray(data.authorizationRequests)
         ) {
-          setTreatmentRequests(data.treatmentRequests);
+          setAuthorizationRequests(data.authorizationRequests);
         } else {
           console.error("Unexpected data format:", data);
         }
       } catch (error) {
-        console.error("Error fetching treatment requests:", error);
+        console.error("Error fetching authorization requests:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTreatmentRequests();
+    fetchAuthorizationRequests();
   }, []);
 
   // Open modal for editing
   const handleEdit = (row) => {
     console.log(row);
-    setCurrentTreatment(row); // Store the row data for editing
+    setCurrentAuthorization(row); // Store the row data for editing
     form.setFieldsValue(row); // Populate form fields with current treatment data
     setIsModalVisible(true); // Open the modal
   };
@@ -50,41 +70,47 @@ const TreatmentRequestPage = () => {
   // Close modal
   const handleCancel = () => {
     setIsModalVisible(false);
-    setCurrentTreatment(null);
+    setCurrentAuthorization(null);
   };
 
   const handleFinish = async (values) => {
-    const udpatedTreatmentRequest = {
-      ...currentTreatment,
+    const udpatedAuthorizationRequest = {
+      ...currentAuthorization,
       status: values.status,
       policyNo: values.policyNo,
       enrollee: values.enrollee,
       treatmentCost: values.treatmentCost,
+      comment: values.comment,
+      responsedBy: hmo?.id,
     };
 
+    // return console.log(udpatedAuthorizationRequest);
+
     try {
-      const response = await fetch(`/api/treatment-request`, {
+      const response = await fetch(`/api/claim-request`, {
         method: "PUT", // or PATCH depending on your API design
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(udpatedTreatmentRequest), // Send the edited values to your API
+        body: JSON.stringify(udpatedAuthorizationRequest), // Send the edited values to your API
       });
 
       if (response.ok) {
-        const updatedTreatment = await response.json();
+        const updatedAuthorization = await response.json();
         // Update the treatmentRequests state with the updated treatment
-        setTreatmentRequests((prevRequests) =>
+        setAuthorizationRequests((prevRequests) =>
           prevRequests.map((request) =>
-            request.id === updatedTreatment.id ? updatedTreatment : request
+            request.id === updatedAuthorization.id
+              ? updatedAuthorization
+              : request
           )
         );
         handleCancel(); // Close the modal after successful update
       } else {
-        console.error("Failed to update the treatment request");
+        console.error("Failed to update the authorization request");
       }
     } catch (error) {
-      console.error("Error updating treatment request:", error);
+      console.error("Error updating authorization request:", error);
     }
   };
 
@@ -104,11 +130,11 @@ const TreatmentRequestPage = () => {
       selector: (row) => row?.policyNo || "N/A",
       sortable: true,
     },
-    {
-      name: "Health Plan",
-      selector: (row) => row?.healthPlan || "N/A",
-      sortable: true,
-    },
+    // {
+    //   name: "Health Plan",
+    //   selector: (row) => row?.healthPlan || "N/A",
+    //   sortable: true,
+    // },
     {
       name: "Treatment Cost",
       selector: (row) => (row?.treatmentCost ? `$${row.treatmentCost}` : "N/A"),
@@ -132,7 +158,12 @@ const TreatmentRequestPage = () => {
       sortable: true,
     },
     {
-      name: "Created At",
+      name: "Approved By",
+      selector: (row) => row?.hmo?.email || "N/A",
+      sortable: true,
+    },
+    {
+      name: "Submited At",
       selector: (row) =>
         row?.createdAt ? new Date(row.createdAt).toLocaleString() : "N/A",
       sortable: true,
@@ -162,19 +193,21 @@ const TreatmentRequestPage = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Treatment Requests</h1>
+      <div className="flex lg:flex-row flex-col-reverse gap-4 items-center justify-between">
+        <h1 className="text-2xl font-bold mb-4">Claim Requests</h1>
+      </div>
       {loading ? (
         <p>Loading...</p>
-      ) : treatmentRequests.length > 0 ? (
-        <DataTable columns={columns} data={treatmentRequests} pagination />
+      ) : authorizationRequests.length > 0 ? (
+        <DataTable columns={columns} data={authorizationRequests} pagination />
       ) : (
         <p>No records found</p>
       )}
 
       {/* Modal for Editing */}
-      {currentTreatment && (
+      {currentAuthorization && (
         <Modal
-          title="Edit Treatment Request"
+          title="Edit Claim Request"
           open={isModalVisible}
           onCancel={handleCancel}
           footer={null}
@@ -189,30 +222,30 @@ const TreatmentRequestPage = () => {
               label="Enrollee"
               rules={[{ required: true }]}
             >
-              <Input />
+              <Input disabled />
             </Form.Item>
             <Form.Item
               name="policyNo"
               label="Policy Number"
               rules={[{ required: true }]}
             >
-              <Input />
+              <Input disabled />
             </Form.Item>
             <Form.Item
               name="treatmentCost"
               label="Treatment Cost"
               rules={[{ required: true }]}
             >
-              <Input type="number" />
+              <Input type="number" disabled />
             </Form.Item>
             <Form.Item name="status" label="Status">
               <Select>
                 <Option
                   value="PENDING"
                   disabled={
-                    currentTreatment.status === "PENDING"
+                    currentAuthorization.status === "PENDING"
                       ? false
-                      : currentTreatment.status === "ACCEPTED"
+                      : currentAuthorization.status === "ACCEPTED"
                       ? true
                       : true
                   }
@@ -222,7 +255,7 @@ const TreatmentRequestPage = () => {
                 <Option
                   value="ACCEPTED"
                   disabled={
-                    currentTreatment.status === "COMPLETED" ? true : false
+                    currentAuthorization.status === "COMPLETED" ? true : false
                   }
                 >
                   Accepted
@@ -238,7 +271,7 @@ const TreatmentRequestPage = () => {
                 Diagnosis
               </label>
               <ul className="list-disc pl-5">
-                {currentTreatment?.diagnoses?.map((diagnos) => (
+                {currentAuthorization?.diagnosis?.map((diagnos) => (
                   <li key={diagnos.id}>{diagnos?.description}</li>
                 ))}
               </ul>
@@ -251,11 +284,31 @@ const TreatmentRequestPage = () => {
                 Treatments
               </label>
               <ul className="list-disc pl-5">
-                {currentTreatment?.treatments?.map((treatment) => (
-                  <li key={treatment.id}>{treatment?.serviceName}</li>
+                {currentAuthorization?.treatments?.map((treatment) => (
+                  <li key={treatment.id}>{treatment?.name}</li>
                 ))}
               </ul>
             </div>
+            <div className="border rounded p-2 shadow mb-4">
+              <label
+                htmlFor=""
+                className="font-semibold underline underline-offset-4 mb-2 block"
+              >
+                Drugs
+              </label>
+              <ul className="list-disc pl-5">
+                {currentAuthorization?.authorizationRequestDrugs?.map(
+                  (drug) => (
+                    <li key={drug?.drugs?.id}>
+                      {drug?.drugs?.name} || QTY ( {drug?.quantity} )
+                    </li>
+                  )
+                )}
+              </ul>
+            </div>
+            <Form.Item name="comment" label="Comment">
+              <TextArea type="text"></TextArea>
+            </Form.Item>
             <Form.Item>
               <Button type="primary" htmlType="submit">
                 Save
@@ -271,4 +324,4 @@ const TreatmentRequestPage = () => {
   );
 };
 
-export default TreatmentRequestPage;
+export default ClaimRequestPage;

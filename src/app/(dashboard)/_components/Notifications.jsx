@@ -35,7 +35,7 @@ const Notifications = () => {
 
   useEffect(() => {
     fetchNotifications(); // Initial fetch
-    const intervalId = setInterval(fetchNotifications, 10000); // Fetch every 10 seconds
+    const intervalId = setInterval(fetchNotifications, 300000); // Fetch every 10 seconds
 
     return () => {
       clearInterval(intervalId); // Cleanup interval on unmount

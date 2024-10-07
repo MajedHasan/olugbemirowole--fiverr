@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Fetch all treatments with pagination and search
+// Fetch all drugs with pagination and search
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") || "";
@@ -15,7 +15,7 @@ export async function GET(req) {
   const limit = parseInt(searchParams.get("limit")) || 10;
 
   const skip = (page - 1) * limit;
-  const treatments = await prisma.treatment.findMany({
+  const drugs = await prisma.drugs.findMany({
     where: {
       name: {
         contains: search,
@@ -28,7 +28,7 @@ export async function GET(req) {
     orderBy: { id: "asc" }, // Change order as needed
   });
 
-  const totalCount = await prisma.treatment.count({
+  const totalCount = await prisma.drugs.count({
     where: {
       name: {
         contains: search,
@@ -38,85 +38,88 @@ export async function GET(req) {
     },
   });
 
-  if (treatments.length === 0) {
+  if (drugs.length === 0) {
     return NextResponse.json({ error: "No results found." }, { status: 404 });
   }
 
-  return NextResponse.json({ treatments, totalCount });
+  return NextResponse.json({ drugs: drugs, totalCount });
 }
 
-// Fetch a single treatment by ID
+// Fetch a single drug by ID
 export async function GET_SINGLE(req) {
   const { searchParams } = new URL(req.url);
   const id = parseInt(searchParams.get("id"));
 
-  const treatment = await prisma.treatment.findUnique({
+  const drug = await prisma.drugs.findUnique({
     where: { id },
   });
 
-  if (!treatment) {
-    return NextResponse.json({ error: "Treatment not found" }, { status: 404 });
+  if (!drug) {
+    return NextResponse.json({ error: "Drug not found" }, { status: 404 });
   }
 
-  return NextResponse.json(treatment);
+  return NextResponse.json(drug);
 }
 
-// Create a new treatment
+// Create a new Drug
 export async function POST(req) {
-  const { name, description, price, isApprovalRequired } = await req.json();
+  const { name, description, price, isApprovalRequired, group } =
+    await req.json();
 
   try {
-    const treatment = await prisma.treatment.create({
+    const drug = await prisma.drugs.create({
       data: {
         name,
         description,
         price,
         isApprovalRequired,
+        group,
       },
     });
-    return NextResponse.json(treatment, { status: 201 });
+    return NextResponse.json(drug, { status: 201 });
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "Error creating treatment." },
+      { error: "Error creating drug." },
       { status: 500 }
     );
   }
 }
 
-// Update an existing treatment
+// Update an existing drug
 export async function PUT(req) {
-  const { id, name, description, price, isApprovalRequired } = await req.json();
+  const { id, name, description, price, isApprovalRequired, group } =
+    await req.json();
 
   try {
-    const updatedTreatment = await prisma.treatment.update({
+    const updatedDrug = await prisma.drugs.update({
       where: { id: parseInt(id) },
-      data: { name, description, price, isApprovalRequired },
+      data: { name, description, price, isApprovalRequired, group },
     });
-    return NextResponse.json(updatedTreatment);
+    return NextResponse.json(updatedDrug);
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "Error updating treatment." },
+      { error: "Error updating drug." },
       { status: 500 }
     );
   }
 }
 
-// Delete a treatment
+// Delete a drug
 export async function DELETE(req) {
   const { searchParams } = new URL(req.url);
   const id = parseInt(searchParams.get("id"));
 
   try {
-    await prisma.treatment.delete({ where: { id } });
+    await prisma.drugs.delete({ where: { id } });
     return NextResponse.json({
-      message: "Treatment deleted successfully",
+      message: "Drug deleted successfully",
     });
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "Error deleting treatment." },
+      { error: "Error deleting drug." },
       { status: 500 }
     );
   }

@@ -29,6 +29,16 @@ const DashboardSidebar = ({ role, closeSidebar }) => {
       { href: "/hospital", label: "Dashboard", icon: <FaHospital /> },
       { href: "/hospital/enrollees", label: "Enrollees", icon: <FaUser /> },
       {
+        href: "/hospital/authorization-request",
+        label: "Authorization Request",
+        icon: <FaClipboardList />,
+      },
+      {
+        href: "/hospital/claim-request",
+        label: "Claim Management",
+        icon: <FaClipboardList />,
+      },
+      {
         href: "/hospital/history",
         label: "History",
         icon: <FaClipboardList />,
@@ -48,8 +58,18 @@ const DashboardSidebar = ({ role, closeSidebar }) => {
         icon: <FaClipboardList />,
       },
       {
-        href: "/hmo/treatment-request",
-        label: "Treatment Request",
+        href: "/hmo/authorization-request",
+        label: "Authorization Request",
+        icon: <FaClipboardList />,
+      },
+      {
+        href: "/hmo/claim-request",
+        label: "Claim Management",
+        icon: <FaClipboardList />,
+      },
+      {
+        href: "/hmo/tariff-management",
+        label: "Tariff Management",
         icon: <FaClipboardList />,
       },
       { href: "/hmo/payouts", label: "Payouts", icon: <FaMoneyCheck /> },

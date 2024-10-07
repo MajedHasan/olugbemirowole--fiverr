@@ -79,6 +79,20 @@ export default function HMOCashboard() {
             <CardDescription className="text-slate-200">+333</CardDescription>
           </CardFooter>
         </Card>
+        <Card className="bg-teal-700 text-white">
+          <CardHeader>
+            <div className="w-full flex items-center justify-between gap-2">
+              <h2 className="text-xl font-semibold">Payouts</h2>
+              <FaDollarSign />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <CardTitle>N 221,324.50</CardTitle>
+          </CardContent>
+          <CardFooter>
+            <CardDescription className="text-slate-200">+333</CardDescription>
+          </CardFooter>
+        </Card>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white shadow-lg rounded p-4">

@@ -5,25 +5,33 @@ import { Button, Modal, message, Select } from "antd";
 // import { uploadFileToFirebase } from "@/lib/firebase";
 import { Input } from "@/components/ui/input";
 
-const TreatmentRequestForm = ({ visible, onClose }) => {
+const AuthorizationRequestForm = ({ visible, onClose }) => {
   const [formData, setFormData] = useState({
     hospitalId: null,
     enrollee: "",
     policyNo: "",
     healthPlan: "",
     diagnosis: [],
-    treatmentCost: "",
+    treatmentCost: 0,
     receipt: null,
     treatments: [],
+    drugs: [],
+    submitedBy: "hospital",
+    submiterId: null,
+    responsedBy: null,
     hospitalName: "Sample Hospital", // Sample value, modify as necessary
     hospitalEmail: "hospital@example.com", // Sample value, modify as necessary
     hospitalNumber: "123-456-7890", // Sample value, modify as necessary
   });
 
+  const [enrolleeOptions, setEnrolleeOptions] = useState([]);
   const [diagnosisOptions, setDiagnosisOptions] = useState([]);
   const [treatmentOptions, setTreatmentOptions] = useState([]);
+  const [drugOptions, setDrugOptions] = useState([]);
+  const [loadingEnrollees, setLoadingEnrollees] = useState(true);
   const [loadingDiagnosis, setLoadingDiagnosis] = useState(true);
   const [loadingTreatment, setLoadingTreatment] = useState(true);
+  const [loadingDrugs, setLoadingDrugs] = useState(true);
 
   const [user, setUser] = useState(null);
   const [hospital, setHospital] = useState(null);
@@ -59,11 +67,32 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
     fetchHospital();
   }, [user]);
 
+  // Fetch Enrollees from the Enrollees/ByHospitalName API
+  useEffect(() => {
+    const loadEnrollees = async () => {
+      setLoadingEnrollees(true);
+      try {
+        const res = await fetch(
+          `/api/enrollees/byHospitalName?hospitalName=${
+            hospital?.hospitalName
+          }&page=${0}&limit=${1000}`
+        );
+        const data = await res.json();
+        setEnrolleeOptions(data.enrollees);
+      } catch (error) {
+        message.error("Failed to load enrollees.");
+      }
+      setLoadingEnrollees(false);
+    };
+
+    if (hospital) loadEnrollees();
+  }, [hospital]);
+
   // Fetch Diagnosis options from the Diagnosis API
   useEffect(() => {
     const fetchDiagnosisOptions = async () => {
       try {
-        const response = await fetch("/api/diagnosis"); // Adjust the endpoint
+        const response = await fetch("/api/diagnosis?limit=1000"); // Adjust the endpoint
         const data = await response.json();
         setDiagnosisOptions(data.diagnoses); // Assuming data is an array of diagnosis options
         setLoadingDiagnosis(false);
@@ -80,7 +109,10 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
   useEffect(() => {
     const fetchTreatmentOptions = async () => {
       try {
-        const response = await fetch("/api/treatments"); // Adjust the endpoint
+        const response = await fetch(
+          "/api/treatments?limit=1000&isApprovalRequired=true"
+        );
+
         const data = await response.json();
         setTreatmentOptions(data.treatments); // Assuming data is an array of treatment options
         setLoadingTreatment(false);
@@ -90,6 +122,24 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
       }
     };
     fetchTreatmentOptions();
+  }, []);
+
+  // Fetch Drug options from the Drug API
+  useEffect(() => {
+    const fetchDrugOptions = async () => {
+      try {
+        const response = await fetch(
+          "/api/drugs?limit=1000&isApprovalRequired=true"
+        ); // Adjust the endpoint
+        const data = await response.json();
+        setDrugOptions(data.drugs); // Assuming data is an array of drug options
+        setLoadingDrugs(false);
+      } catch (error) {
+        message.error("Error fetching drug options");
+        setLoadingDrugs(false);
+      }
+    };
+    fetchDrugOptions();
   }, []);
 
   const handleChange = (e) => {
@@ -103,8 +153,105 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
     }
   };
 
+  // const handleSelectChange = (name, value) => {
+  //   if (name === "enrollee") {
+  //     const findEnrollee = enrolleeOptions.find(
+  //       (enrollee) => enrollee.id === value
+  //     );
+  //     if (findEnrollee) {
+  //       setFormData({
+  //         ...formData,
+  //         [name]: findEnrollee.fullName,
+  //         policyNo: findEnrollee.policyNo,
+  //         healthPlan: findEnrollee.planType,
+  //       });
+  //     } else {
+  //       setFormData({ ...formData, [name]: value });
+  //     }
+  //   } else {
+  //     setFormData({ ...formData, [name]: value });
+  //   }
+  // };
+
+  // Calculating Cost From Treatements
   const handleSelectChange = (name, value) => {
-    setFormData({ ...formData, [name]: value });
+    if (name === "enrollee") {
+      const findEnrollee = enrolleeOptions.find(
+        (enrollee) => enrollee.id === value
+      );
+      if (findEnrollee) {
+        setFormData({
+          ...formData,
+          [name]: findEnrollee.fullName,
+          policyNo: findEnrollee.policyNo,
+          healthPlan: findEnrollee.planType,
+        });
+      } else {
+        setFormData({ ...formData, [name]: value });
+      }
+    } else if (name === "treatments") {
+      // Calculate total cost for selected treatments
+      const selectedTreatments = treatmentOptions.filter((treatment) =>
+        value.includes(treatment.id)
+      );
+      const totalTreatmentCost = selectedTreatments.reduce(
+        (sum, treatment) => sum + treatment.price,
+        0
+      );
+      setFormData({
+        ...formData,
+        treatments: value,
+        treatmentCost: totalTreatmentCost,
+      });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
+  };
+
+  // const handleDrugChange = (index, field, value) => {
+  //   const updatedDrugs = [...formData.drugs];
+  //   updatedDrugs[index] = { ...updatedDrugs[index], [field]: parseInt(value) };
+  //   setFormData({ ...formData, drugs: updatedDrugs });
+  // };
+
+  const handleDrugChange = (index, field, value) => {
+    const updatedDrugs = [...formData.drugs];
+    updatedDrugs[index] = { ...updatedDrugs[index], [field]: parseInt(value) };
+    setFormData({ ...formData, drugs: updatedDrugs });
+    calculateTotalCost(updatedDrugs);
+  };
+
+  const handleAddDrug = () => {
+    setFormData({
+      ...formData,
+      drugs: [...formData.drugs, { drugId: "", quantity: 1 }],
+    });
+  };
+
+  // const handleRemoveDrug = (index) => {
+  //   const updatedDrugs = formData.drugs.filter((_, i) => i !== index);
+  //   setFormData({ ...formData, drugs: updatedDrugs });
+  // };
+
+  const handleRemoveDrug = (index) => {
+    const updatedDrugs = formData.drugs.filter((_, i) => i !== index);
+    setFormData({ ...formData, drugs: updatedDrugs });
+    calculateTotalCost(updatedDrugs);
+  };
+
+  const calculateTotalCost = (updatedDrugs) => {
+    const drugCost = updatedDrugs.reduce((sum, drug) => {
+      const selectedDrug = drugOptions.find((d) => d.id === drug.drugId);
+      return sum + (selectedDrug ? selectedDrug.price * drug.quantity : 0);
+    }, 0);
+    setFormData((prev) => ({
+      ...prev,
+      treatmentCost:
+        prev.treatments.reduce(
+          (sum, id) => sum + treatmentOptions.find((t) => t.id === id).price,
+          0
+        ) + drugCost,
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -124,7 +271,7 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
     try {
       console.log(formData, receiptUrl);
 
-      const response = await fetch("/api/treatment-request", {
+      const response = await fetch("/api/authorization-request", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -133,6 +280,7 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
           ...formData,
           receipt: receiptUrl,
           hospitalId: hospital?.id,
+          submiterId: hospital?.id,
         }),
       });
 
@@ -149,7 +297,7 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
 
   return (
     <Modal
-      title="Submit Claim"
+      title="Authorization Request"
       open={visible}
       onCancel={onClose}
       footer={null}
@@ -163,13 +311,29 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
             <label className="block mb-1 font-medium" htmlFor="enrollee">
               Enrollee <span className="text-red-500">*</span>
             </label>
-            <Input
+            {/* <Input
               id="enrollee"
               name="enrollee"
               required
+              loading={loadingEnrollees}
               value={formData.enrollee}
               onChange={handleChange}
-            />
+            /> */}
+            <Select
+              id="enrollee"
+              name="enrollee"
+              mode="single"
+              value={formData.enrollee}
+              onChange={(value) => handleSelectChange("enrollee", value)}
+              loading={loadingEnrollees}
+              className="w-full"
+            >
+              {enrolleeOptions?.map((enrollee) => (
+                <Select.Option key={enrollee.id} value={enrollee.id}>
+                  {enrollee.fullName}
+                </Select.Option>
+              ))}
+            </Select>
           </div>
 
           {/* Policy Number Field */}
@@ -181,6 +345,7 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
               id="policyNo"
               name="policyNo"
               required
+              disabled
               value={formData.policyNo}
               onChange={handleChange}
             />
@@ -195,6 +360,7 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
               id="healthPlan"
               name="healthPlan"
               required
+              disabled
               value={formData.healthPlan}
               onChange={handleChange}
             />
@@ -238,32 +404,51 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
             >
               {treatmentOptions?.map((treatment) => (
                 <Select.Option key={treatment.id} value={treatment.id}>
-                  {treatment.serviceName}
+                  {treatment.name}
                 </Select.Option>
               ))}
             </Select>
           </div>
 
-          {/* Drugs Field */}
+          {/* Dynamic Drugs Field */}
           <div className="field md:col-span-3">
-            <label className="block mb-1 font-medium" htmlFor="treatments">
-              Drugs <span className="text-red-500">*</span>
-            </label>
-            <Select
-              id="treatments"
-              name="treatments"
-              mode="multiple"
-              value={formData.treatments}
-              onChange={(value) => handleSelectChange("treatments", value)}
-              loading={loadingTreatment}
-              className="w-full"
-            >
-              {treatmentOptions?.map((treatment) => (
-                <Select.Option key={treatment.id} value={treatment.id}>
-                  {treatment.serviceName}
-                </Select.Option>
-              ))}
-            </Select>
+            <label className="block mb-1 font-medium">Drugs</label>
+            {formData.drugs.map((drug, index) => (
+              <div key={index} className="flex space-x-4 mb-2">
+                <Select
+                  className="w-full"
+                  placeholder="Select Drug"
+                  value={drug.drugId}
+                  onChange={(value) => handleDrugChange(index, "drugId", value)}
+                  loading={loadingDrugs}
+                >
+                  {drugOptions.map((drugOption) => (
+                    <Select.Option key={drugOption.id} value={drugOption.id}>
+                      {drugOption.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="Quantity"
+                  value={drug.quantity}
+                  onChange={(e) =>
+                    handleDrugChange(index, "quantity", e.target.value)
+                  }
+                />
+                <Button
+                  type="danger"
+                  onClick={() => handleRemoveDrug(index)}
+                  className="ml-2"
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+            <Button type="dashed" onClick={handleAddDrug}>
+              Add Drug
+            </Button>
           </div>
 
           {/* Treatment Cost Field */}
@@ -278,6 +463,7 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
               required
               value={formData.treatmentCost}
               onChange={handleChange}
+              disabled
             />
           </div>
 
@@ -354,4 +540,4 @@ const TreatmentRequestForm = ({ visible, onClose }) => {
   );
 };
 
-export default TreatmentRequestForm;
+export default AuthorizationRequestForm;

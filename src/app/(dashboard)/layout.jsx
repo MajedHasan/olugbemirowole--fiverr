@@ -11,7 +11,10 @@ const Layout = ({ children }) => {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [enrollee, setEnrollee] = useState(null);
   const [hospital, setHospital] = useState(null);
+  const [organisation, setOrganisation] = useState(null);
+  const [hmo, setHmo] = useState(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("dcPortal-user");
@@ -30,15 +33,39 @@ const Layout = ({ children }) => {
   };
 
   useEffect(() => {
+    const fetchEnrollee = async () => {
+      const response = await fetch(`/api/enrollees/${user?.id}`);
+      if (response.ok) {
+        setEnrollee(await response.json());
+      }
+    };
     const fetchHospital = async () => {
       const response = await fetch(`/api/hospital/single?id=${user?.id}`);
       if (response.ok) {
         setHospital(await response.json());
       }
     };
+    const fetchOrganisation = async () => {
+      const response = await fetch(`/api/organisation/single?id=${user?.id}`);
+      if (response.ok) {
+        setOrganisation(await response.json());
+      }
+    };
+    const fetchHmo = async () => {
+      const response = await fetch(`/api/hmo/single?id=${user?.id}`);
+      if (response.ok) {
+        setHmo(await response.json());
+      }
+    };
 
-    if (user?.role === "HOSPITAL") {
+    if (user?.role === "ENROLLEES") {
+      fetchEnrollee();
+    } else if (user?.role === "HOSPITAL") {
       fetchHospital();
+    } else if (user?.role === "ORGANISATION") {
+      fetchOrganisation();
+    } else if (user?.role === "HMO") {
+      fetchHmo();
     }
   }, [user]);
 
@@ -77,12 +104,12 @@ const Layout = ({ children }) => {
           <h1 className="text-xl lg:text-3xl font-bold">
             Welcome,{" "}
             {user?.role === "ENROLLEES"
-              ? "Enrollee"
+              ? enrollee?.fullName
               : user?.role === "HOSPITAL"
               ? hospital?.hospitalName
               : user?.role === "ORGANISATION"
-              ? "Organisation"
-              : "HMO"}
+              ? organisation?.companyName
+              : hmo?.email}
           </h1>
           <div className="flex items-center gap-3">
             <Notifications />

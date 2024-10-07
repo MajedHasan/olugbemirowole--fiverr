@@ -23,7 +23,8 @@ import {
 import { FaDollarSign, FaUserAlt } from "react-icons/fa";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import TreatmentRequestForm from "./_components/TreatmentRequestForm";
+import AuthorizationRequestForm from "./_components/AuthorizationRequestForm";
+import ClaimRequestForm from "./_components/ClaimRequestForm";
 
 // Register the components
 ChartJS.register(
@@ -38,7 +39,9 @@ ChartJS.register(
 );
 
 const HospitalDashboard = () => {
-  const [isPopupVisible, setIsPopupVisible] = useState(false);
+  const [isAuthorizationPopupVisible, setIsAuthorizationPopupVisible] =
+    useState(false);
+  const [isClaimPopupVisible, setIsClaimPopupVisible] = useState(false);
 
   const data = {
     labels: ["January", "February", "March", "April"],
@@ -57,20 +60,24 @@ const HospitalDashboard = () => {
     <>
       <div>
         <div className="flex items-center justify-end gap-4">
-          <TreatmentRequestForm
-            visible={isPopupVisible}
-            onClose={() => setIsPopupVisible(false)}
+          <ClaimRequestForm
+            visible={isClaimPopupVisible}
+            onClose={() => setIsClaimPopupVisible(false)}
           />
           <Button
             type="primary"
-            onClick={() => setIsPopupVisible(true)}
+            onClick={() => setIsClaimPopupVisible(true)}
             style={{ marginBottom: "16px" }}
           >
             Submit Claim
           </Button>
+          <AuthorizationRequestForm
+            visible={isAuthorizationPopupVisible}
+            onClose={() => setIsAuthorizationPopupVisible(false)}
+          />
           <Button
             type="primary"
-            onClick={() => setIsPopupVisible(true)}
+            onClick={() => setIsAuthorizationPopupVisible(true)}
             style={{ marginBottom: "16px" }}
           >
             Request Authorization

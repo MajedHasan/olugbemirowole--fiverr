@@ -33,23 +33,24 @@ export async function POST(req) {
     const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
     // Map the data from the sheet to your hospital format
-    const hospitalsData = sheetData.map((row) => ({
-      hospitalName: row["Hospital Name"],
-      hospitalAddress: row["Hospital Address"],
+    const organisationData = sheetData.map((row) => ({
+      companyName: row["Company Name"],
+      companyID: row["Company ID"],
       phoneNumber: row["Phone Number"],
       email: row["Email"],
+      clientServiceOfficer: row["Client Service Officer"],
     }));
 
-    const hospitals = hospitalsData.map((hospital) => ({
-      ...hospital,
-      phoneNumber: hospital.phoneNumber.toString(), // Convert phone number to string
+    const organisations = organisationData.map((organisation) => ({
+      ...organisation,
+      phoneNumber: organisation.phoneNumber.toString(), // Convert phone number to string
     }));
 
     // Insert hospitals data into the database
 
     // Insert enrollees data into the database and create user for each enrollee
-    for (const hospital of hospitals) {
-      const role = "HOSPITAL";
+    for (const organisation of organisations) {
+      const role = "ORGANISATION";
       const defaultPassword = "123456";
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
@@ -63,9 +64,9 @@ export async function POST(req) {
 
       if (user) {
         // Create enrollee associated with the user
-        await prisma.hospital.create({
+        await prisma.organisation.create({
           data: {
-            ...hospital,
+            ...organisation,
             userId: user.id, // Associate enrollee with the newly created user
           },
         });

@@ -4,14 +4,14 @@ import { sendNotification } from "@/lib/notificationService";
 
 const prisma = new PrismaClient();
 
-// Fetch all treatment requests with pagination, search, and filter
+// Fetch all claim requests with pagination, search, and filter
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") || "";
   const page = parseInt(searchParams.get("page")) || 1;
   const limit = parseInt(searchParams.get("limit")) || 10;
-  const status = searchParams.get("status"); // Retrieve status as a string
-  const userId = searchParams.get("userId"); // Retrieve user ID if provided
+  const status = searchParams.get("status");
+  const userId = searchParams.get("userId");
 
   const skip = (page - 1) * limit;
 
@@ -22,13 +22,13 @@ export async function GET(req) {
     if (userId) {
       const hospital = await prisma.hospital.findUnique({
         where: { userId: parseInt(userId) },
-        select: { id: true }, // Only select the hospital ID
+        select: { id: true },
       });
 
-      hospitalId = hospital ? hospital.id : null; // Get hospital ID or null if not found
+      hospitalId = hospital ? hospital.id : null;
     }
 
-    const treatmentRequests = await prisma.treatmentRequest.findMany({
+    const claimRequests = await prisma.claimRequest.findMany({
       where: {
         AND: [
           {
@@ -36,31 +36,35 @@ export async function GET(req) {
               {
                 enrollee: {
                   contains: search,
-                  // mode: "insensitive", // Uncomment for case-insensitive search
                 },
               },
               {
                 hospitalName: {
                   contains: search,
-                  // mode: "insensitive", // Uncomment for case-insensitive search
                 },
               },
             ],
           },
-          ...(status ? [{ status }] : []), // Include status condition
-          ...(hospitalId ? [{ hospitalId }] : []), // Include hospitalId condition if found
+          ...(status ? [{ status }] : []),
+          ...(hospitalId ? [{ hospitalId }] : []),
         ],
       },
-      skip: skip,
+      skip,
       take: limit,
-      orderBy: { createdAt: "desc" },
+      orderBy: { id: "desc" },
       include: {
-        diagnoses: true, // Include associated diagnoses
-        treatments: true, // Include associated treatments
+        diagnosis: true,
+        treatments: true,
+        claimRequestDrugs: {
+          include: {
+            drugs: true, // Include drug details
+          },
+        },
+        hmo: true,
       },
     });
 
-    const totalCount = await prisma.treatmentRequest.count({
+    const totalCount = await prisma.claimRequest.count({
       where: {
         AND: [
           {
@@ -68,73 +72,99 @@ export async function GET(req) {
               {
                 enrollee: {
                   contains: search,
-                  // mode: "insensitive", // Uncomment for case-insensitive search
                 },
               },
               {
                 hospitalName: {
                   contains: search,
-                  // mode: "insensitive", // Uncomment for case-insensitive search
                 },
               },
             ],
           },
-          ...(status ? [{ status }] : []), // Include status condition
-          ...(hospitalId ? [{ hospitalId }] : []), // Include hospitalId condition if found
+          ...(status ? [{ status }] : []),
+          ...(hospitalId ? [{ hospitalId }] : []),
         ],
       },
     });
 
-    return NextResponse.json({ treatmentRequests, totalCount });
+    return NextResponse.json({
+      claimRequests: claimRequests,
+      totalCount,
+    });
   } catch (error) {
-    console.error("Error fetching treatment requests:", error);
+    console.error("Error fetching claim requests:", error);
     return NextResponse.json(
-      { error: "Error fetching treatment requests." },
+      { error: "Error fetching claim requests." },
       { status: 500 }
     );
   }
 }
 
-// Fetch a single treatment request by ID
+// Fetch a single claim request by ID
 export async function GET_SINGLE(req) {
   const { id } = req.query;
-  const treatmentRequest = await prisma.treatmentRequest.findUnique({
+
+  const claimRequest = await prisma.claimRequest.findUnique({
     where: { id: parseInt(id) },
     include: {
-      diagnoses: true, // Include associated diagnoses
-      treatments: true, // Include associated treatments
+      diagnosis: true,
+      treatments: true,
+      claimRequestDrugs: {
+        include: {
+          drugs: true,
+        },
+      },
     },
   });
 
-  if (!treatmentRequest) {
+  if (!claimRequest) {
     return NextResponse.json(
-      { error: "Treatment request not found" },
+      { error: "Claim request not found" },
       { status: 404 }
     );
   }
 
-  return NextResponse.json(treatmentRequest);
+  return NextResponse.json(claimRequest);
 }
 
-// Create a new treatment request
+// Create a new claim request
 export async function POST(req) {
   const {
     hospitalId,
-    // enrolleeId,
     enrollee,
     policyNo,
     healthPlan,
-    // diagnosisIds, // Use IDs of diagnoses
-    diagnosis, // Use IDs of diagnoses
     treatmentCost,
     receipt,
     hospitalName,
     hospitalEmail,
     hospitalPhone,
-    // treatmentIds, // Use IDs of treatments
-    treatments, // Use IDs of treatments
+    submitedBy,
+    submiterId,
+    diagnosis, // Array of diagnosis IDs
+    treatments, // Array of treatment IDs
+    drugs, // Array of drugs with { drugId, quantity }
     status = "PENDING",
   } = await req.json();
+
+  // return NextResponse.json(
+  //   {
+  //     hospitalId,
+  //     enrollee,
+  //     policyNo,
+  //     healthPlan,
+  //     treatmentCost,
+  //     receipt,
+  //     hospitalName,
+  //     hospitalEmail,
+  //     hospitalPhone,
+  //     diagnosis,
+  //     treatments,
+  //     drugs,
+  //     status,
+  //   },
+  //   { status: 201 }
+  // );
 
   const findHospital = await prisma.hospital.findUnique({
     where: { id: hospitalId },
@@ -144,10 +174,10 @@ export async function POST(req) {
   });
 
   try {
-    const treatmentRequest = await prisma.treatmentRequest.create({
+    const claimRequest = await prisma.claimRequest.create({
       data: {
         hospitalId,
-        enrollee, // Set enrollee ID directly
+        enrollee,
         policyNo,
         healthPlan,
         treatmentCost,
@@ -155,18 +185,26 @@ export async function POST(req) {
         hospitalName,
         hospitalEmail,
         hospitalPhone,
+        submitedBy,
+        submiterId,
         status,
-        diagnoses: {
+        diagnosis: {
           connect: diagnosis.map((id) => ({ id })), // Connect diagnoses
         },
         treatments: {
           connect: treatments.map((id) => ({ id })), // Connect treatments
         },
+        claimRequestDrugs: {
+          create: drugs.map((drug) => ({
+            drugId: drug.drugId,
+            quantity: drug.quantity,
+          })),
+        },
       },
     });
 
     // Create notification message
-    const notificationMessage = `A new treatment request has been submitted by ${hospitalName} for policy number ${policyNo}.`;
+    const notificationMessage = `A new Claim request has been submitted by ${hospitalName} for policy number ${policyNo}.`;
 
     // Send notifications
     await sendNotification(findHospital?.user?.id, notificationMessage, "DB");
@@ -180,57 +218,77 @@ export async function POST(req) {
       notificationMessage,
       "Email"
     );
-    // await sendNotification("+2348034586746", notificationMessage, "SMS");
 
-    return NextResponse.json(treatmentRequest, { status: 201 });
+    return NextResponse.json(claimRequest, { status: 201 });
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "Error creating treatment request." },
+      { error: "Error creating claim request." },
       { status: 500 }
     );
   }
 }
 
-// Update a treatment request
+// Update an claim request
 export async function PUT(req) {
-  const { id, ...data } = await req.json();
+  const {
+    id,
+    diagnosis,
+    treatments,
+    claimRequestDrugs,
+    hospitalId,
+    hmo,
+    responsedBy,
+    ...data
+  } = await req.json();
 
   try {
-    const findTreatmentRequest = await prisma.treatmentRequest.findUnique({
+    const findClaimRequest = await prisma.claimRequest.findUnique({
       where: { id: parseInt(id) },
     });
 
     const findHospital = await prisma.hospital.findUnique({
-      where: { id: data.hospitalId },
+      where: { id: hospitalId },
       include: {
         user: true,
       },
     });
 
-    const updatedRequest = await prisma.treatmentRequest.update({
+    const updatedRequest = await prisma.claimRequest.update({
       where: { id: parseInt(id) },
       data: {
         ...data,
-        diagnoses: data.diagnosisIds
+        hospital: {
+          connect: { id: hospitalId }, // Explicitly connecting the relation
+        },
+        hmo: responsedBy
           ? {
-              set: data.diagnosisIds.map((id) => ({ id })),
+              connect: { id: responsedBy }, // Connect to the HMO (for responsedBy)
             }
-          : undefined, // Update diagnoses if provided
-        treatments: data.treatmentIds
+          : undefined,
+        diagnosis: diagnosis
           ? {
-              set: data.treatmentIds.map((id) => ({ id })),
+              set: diagnosis.map((d) => ({ id: d.id })),
             }
-          : undefined, // Update treatments if provided
+          : undefined,
+        treatments: treatments
+          ? {
+              set: treatments.map((t) => ({ id: t.id })),
+            }
+          : undefined,
+        claimRequestDrugs: {
+          deleteMany: {}, // Optional: Clear existing drugs before adding new ones
+          create: claimRequestDrugs.map((drug) => ({
+            drugId: drug.drugId,
+            quantity: drug.quantity,
+          })),
+        },
       },
     });
 
-    if (
-      data.status === "ACCEPTED" &&
-      findTreatmentRequest.status === "PENDING"
-    ) {
+    if (data.status === "ACCEPTED" && findClaimRequest.status === "PENDING") {
       // Create notification message
-      const notificationMessage = `Treatment request has been Accepted by HMO for policy number ${data.policyNo}.`;
+      const notificationMessage = `Claim request has been Accepted by HMO for policy number ${data.policyNo}.`;
 
       // Send notifications
       await sendNotification(findHospital.user.id, notificationMessage, "DB");
@@ -244,30 +302,31 @@ export async function PUT(req) {
         notificationMessage,
         "Email"
       );
-      // await sendNotification("+2348034586746", notificationMessage, "SMS");
     }
 
     return NextResponse.json(updatedRequest);
   } catch (error) {
+    console.error(error);
     return NextResponse.json(
-      { error: "Error updating treatment request." },
+      { error: "Error updating claim request." },
       { status: 500 }
     );
   }
 }
 
-// Delete a treatment request
+// Delete an authorization request
 export async function DELETE(req) {
   const { id } = req.query;
 
   try {
-    await prisma.treatmentRequest.delete({ where: { id: parseInt(id) } });
+    await prisma.claimRequest.delete({ where: { id: parseInt(id) } });
     return NextResponse.json({
-      message: "Treatment request deleted successfully",
+      message: "Claim request deleted successfully",
     });
   } catch (error) {
+    console.error(error);
     return NextResponse.json(
-      { error: "Error deleting treatment request." },
+      { error: "Error deleting claim request." },
       { status: 500 }
     );
   }
