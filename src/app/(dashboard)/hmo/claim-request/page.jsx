@@ -8,10 +8,10 @@ import TextArea from "antd/es/input/TextArea";
 const { Option } = Select;
 
 const ClaimRequestPage = () => {
-  const [authorizationRequests, setAuthorizationRequests] = useState([]);
+  const [claimRequests, setClaimRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [currentAuthorization, setCurrentAuthorization] = useState(null);
+  const [currentClaim, setCurrentClaim] = useState(null);
   const [form] = Form.useForm(); // Create a form instance
   const [user, setUser] = useState(null);
   const [hmo, setHmo] = useState(null);
@@ -33,36 +33,33 @@ const ClaimRequestPage = () => {
     if (user) fetchHmo();
   }, [user]);
 
-  // Fetch treatment requests data
+  // Fetch claim requests data
   useEffect(() => {
-    const fetchAuthorizationRequests = async () => {
+    const fetchClaimRequests = async () => {
       try {
         const response = await fetch("/api/claim-request");
         const data = await response.json();
         if (Array.isArray(data)) {
-          setAuthorizationRequests(data);
-        } else if (
-          data.authorizationRequests &&
-          Array.isArray(data.authorizationRequests)
-        ) {
-          setAuthorizationRequests(data.authorizationRequests);
+          setClaimRequests(data);
+        } else if (data.claimRequests && Array.isArray(data.claimRequests)) {
+          setClaimRequests(data.claimRequests);
         } else {
           console.error("Unexpected data format:", data);
         }
       } catch (error) {
-        console.error("Error fetching authorization requests:", error);
+        console.error("Error fetching claim requests:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAuthorizationRequests();
+    fetchClaimRequests();
   }, []);
 
   // Open modal for editing
   const handleEdit = (row) => {
     console.log(row);
-    setCurrentAuthorization(row); // Store the row data for editing
+    setCurrentClaim(row); // Store the row data for editing
     form.setFieldsValue(row); // Populate form fields with current treatment data
     setIsModalVisible(true); // Open the modal
   };
@@ -70,12 +67,12 @@ const ClaimRequestPage = () => {
   // Close modal
   const handleCancel = () => {
     setIsModalVisible(false);
-    setCurrentAuthorization(null);
+    setCurrentClaim(null);
   };
 
   const handleFinish = async (values) => {
-    const udpatedAuthorizationRequest = {
-      ...currentAuthorization,
+    const udpatedClaimRequest = {
+      ...currentClaim,
       status: values.status,
       policyNo: values.policyNo,
       enrollee: values.enrollee,
@@ -92,25 +89,23 @@ const ClaimRequestPage = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(udpatedAuthorizationRequest), // Send the edited values to your API
+        body: JSON.stringify(udpatedClaimRequest), // Send the edited values to your API
       });
 
       if (response.ok) {
-        const updatedAuthorization = await response.json();
-        // Update the treatmentRequests state with the updated treatment
-        setAuthorizationRequests((prevRequests) =>
+        const updatedClaim = await response.json();
+        // Update the claimRequests state with the updated treatment
+        setClaimRequests((prevRequests) =>
           prevRequests.map((request) =>
-            request.id === updatedAuthorization.id
-              ? updatedAuthorization
-              : request
+            request.id === updatedClaim.id ? updatedClaim : request
           )
         );
         handleCancel(); // Close the modal after successful update
       } else {
-        console.error("Failed to update the authorization request");
+        console.error("Failed to update the claim request");
       }
     } catch (error) {
-      console.error("Error updating authorization request:", error);
+      console.error("Error updating claim request:", error);
     }
   };
 
@@ -198,14 +193,14 @@ const ClaimRequestPage = () => {
       </div>
       {loading ? (
         <p>Loading...</p>
-      ) : authorizationRequests.length > 0 ? (
-        <DataTable columns={columns} data={authorizationRequests} pagination />
+      ) : claimRequests.length > 0 ? (
+        <DataTable columns={columns} data={claimRequests} pagination />
       ) : (
         <p>No records found</p>
       )}
 
       {/* Modal for Editing */}
-      {currentAuthorization && (
+      {currentClaim && (
         <Modal
           title="Edit Claim Request"
           open={isModalVisible}
@@ -243,9 +238,9 @@ const ClaimRequestPage = () => {
                 <Option
                   value="PENDING"
                   disabled={
-                    currentAuthorization.status === "PENDING"
+                    currentClaim.status === "PENDING"
                       ? false
-                      : currentAuthorization.status === "ACCEPTED"
+                      : currentClaim.status === "ACCEPTED"
                       ? true
                       : true
                   }
@@ -254,9 +249,7 @@ const ClaimRequestPage = () => {
                 </Option>
                 <Option
                   value="ACCEPTED"
-                  disabled={
-                    currentAuthorization.status === "COMPLETED" ? true : false
-                  }
+                  disabled={currentClaim.status === "COMPLETED" ? true : false}
                 >
                   Accepted
                 </Option>
@@ -271,7 +264,7 @@ const ClaimRequestPage = () => {
                 Diagnosis
               </label>
               <ul className="list-disc pl-5">
-                {currentAuthorization?.diagnosis?.map((diagnos) => (
+                {currentClaim?.diagnosis?.map((diagnos) => (
                   <li key={diagnos.id}>{diagnos?.description}</li>
                 ))}
               </ul>
@@ -284,7 +277,7 @@ const ClaimRequestPage = () => {
                 Treatments
               </label>
               <ul className="list-disc pl-5">
-                {currentAuthorization?.treatments?.map((treatment) => (
+                {currentClaim?.treatments?.map((treatment) => (
                   <li key={treatment.id}>{treatment?.name}</li>
                 ))}
               </ul>
@@ -297,13 +290,11 @@ const ClaimRequestPage = () => {
                 Drugs
               </label>
               <ul className="list-disc pl-5">
-                {currentAuthorization?.authorizationRequestDrugs?.map(
-                  (drug) => (
-                    <li key={drug?.drugs?.id}>
-                      {drug?.drugs?.name} || QTY ( {drug?.quantity} )
-                    </li>
-                  )
-                )}
+                {currentClaim?.authorizationRequestDrugs?.map((drug) => (
+                  <li key={drug?.drugs?.id}>
+                    {drug?.drugs?.name} || QTY ( {drug?.quantity} )
+                  </li>
+                ))}
               </ul>
             </div>
             <Form.Item name="comment" label="Comment">

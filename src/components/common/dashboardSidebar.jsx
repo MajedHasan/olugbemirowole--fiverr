@@ -39,8 +39,8 @@ const DashboardSidebar = ({ role, closeSidebar }) => {
         icon: <FaClipboardList />,
       },
       {
-        href: "/hospital/history",
-        label: "History",
+        href: "/hospital/payouts",
+        label: "Payouts",
         icon: <FaClipboardList />,
       },
     ],

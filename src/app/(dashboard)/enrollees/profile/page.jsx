@@ -131,6 +131,7 @@ const DigitalIdentityForm = ({ userId }) => {
               {...register("fullName")}
               id="fullName"
               placeholder="Enter full name"
+              disabled
             />
           </div>
 
@@ -140,7 +141,8 @@ const DigitalIdentityForm = ({ userId }) => {
               {...register("policyNo")}
               id="policyNo"
               placeholder="Policy Number"
-              disabled={false}
+              // disabled={false}
+              disabled
             />
           </div>
 
@@ -150,6 +152,7 @@ const DigitalIdentityForm = ({ userId }) => {
               {...register("company")}
               id="company"
               placeholder="Company"
+              disabled
             />
           </div>
 
@@ -159,6 +162,7 @@ const DigitalIdentityForm = ({ userId }) => {
               {...register("planType")}
               id="planType"
               placeholder="Plan Type"
+              disabled
             />
           </div>
 
@@ -168,12 +172,13 @@ const DigitalIdentityForm = ({ userId }) => {
               {...register("phoneNumber")}
               id="phoneNumber"
               placeholder="Phone Number"
+              disabled
             />
           </div>
 
           <div>
             <Label htmlFor="status">Status</Label>
-            <Select onValueChange={setStatus} value={status}>
+            <Select onValueChange={setStatus} value={status} disabled>
               <SelectTrigger>
                 <SelectValue placeholder="Select Status" />
               </SelectTrigger>
@@ -191,6 +196,7 @@ const DigitalIdentityForm = ({ userId }) => {
               {...register("hospital")}
               id="hospital"
               placeholder="Hospital Name"
+              disabled
             />
           </div>
         </div>
@@ -220,16 +226,16 @@ const DigitalIdentityForm = ({ userId }) => {
               </div>
             );
           })}
-          <Button type="button" onClick={addDependent} className="bg-teal-600">
+          {/* <Button type="button" onClick={addDependent} className="bg-teal-600" >
             Add Dependent
-          </Button>
+          </Button> */}
         </div>
 
         {/* Submit Button */}
         <CardFooter>
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {/* <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Updating..." : "Update Information"}
-          </Button>
+          </Button> */}
         </CardFooter>
       </form>
     </CardContent>

@@ -382,7 +382,7 @@ const ClaimRequestForm = ({ visible, onClose }) => {
             >
               {diagnosisOptions.map((diagnosis) => (
                 <Select.Option key={diagnosis.id} value={diagnosis.id}>
-                  {diagnosis.description}
+                  {diagnosis.name}
                 </Select.Option>
               ))}
             </Select>

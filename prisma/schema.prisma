@@ -11,7 +11,7 @@ datasource db {
 model User {
   id           Int           @id @default(autoincrement())
   createdAt    DateTime      @default(now())
-  email        String?        @unique
+  email        String?       @unique
   name         String?
   password     String
   role         Role          @default(ENROLLEES)
@@ -47,15 +47,15 @@ model Dependent {
 }
 
 model Hospital {
-  id                      Int                     @id @default(autoincrement())
-  email                   String
-  hospitalAddress         String
-  hospitalName            String
-  phoneNumber             String
-  userId                  Int?                    @unique
-  user                    User?                   @relation(fields: [userId], references: [id])
-  authorizationRequests   AuthorizationRequest[]  @relation("HospitalRequests") // Consider a distinct name for clarity
-  claimRequests          ClaimRequest[]         @relation("HospitalClaims") // Changed to avoid naming conflict
+  id                    Int                    @id @default(autoincrement())
+  email                 String?
+  hospitalAddress       String
+  hospitalName          String
+  phoneNumber           String
+  userId                Int?                   @unique
+  authorizationRequests AuthorizationRequest[] @relation("HospitalRequests")
+  claimRequests         ClaimRequest[]         @relation("HospitalClaims")
+  user                  User?                  @relation(fields: [userId], references: [id])
 }
 
 model Organisation {
@@ -70,15 +70,14 @@ model Organisation {
 }
 
 model HMO {
-  id          Int        @id @default(autoincrement())
-  email       String
-  permissions Permission
-  phoneNumber String
-  userId      Int?       @unique
-  user        User?      @relation(fields: [userId], references: [id])
-
+  id                   Int                    @id @default(autoincrement())
+  email                String
+  permissions          Permission
+  phoneNumber          String
+  userId               Int?                   @unique
   AuthorizationRequest AuthorizationRequest[]
-  ClaimRequest ClaimRequest[]
+  ClaimRequest         ClaimRequest[]
+  user                 User?                  @relation(fields: [userId], references: [id])
 }
 
 model Post {
@@ -94,106 +93,113 @@ model Post {
 }
 
 model Diagnosis {
-  id                      Int                     @id @default(autoincrement())
-  name                    String
-  description             String?
-  code                    String                  @unique
-  authorizationRequests   AuthorizationRequest[]  @relation("DiagnosisRequests_Authorization")
-  claimRequests          ClaimRequest[]         @relation("DiagnosisRequests_Claims")
-
+  id                    Int                    @id @default(autoincrement())
+  name                  String
+  description           String?
+  code                  String                 @unique
+  authorizationRequests AuthorizationRequest[] @relation("DiagnosisRequests_Authorization")
+  claimRequests         ClaimRequest[]         @relation("DiagnosisRequests_Claims")
 }
 
 model Treatment {
-  id                        Int                     @id @default(autoincrement())
-  description               String?
-  price                     Float
-  name                      String
-  isApprovalRequired        Boolean
-  authorizationRequests     AuthorizationRequest[]  @relation("TreatmentRequests_Authorization")
-  claimRequests            ClaimRequest[]         @relation("TreatmentRequests_Claims")
+  id                    Int                    @id @default(autoincrement())
+  description           String?
+  price                 Float
+  isApprovalRequired    Boolean
+  name                  String
+  authorizationRequests AuthorizationRequest[] @relation("TreatmentRequests_Authorization")
+  claimRequests         ClaimRequest[]         @relation("TreatmentRequests_Claims")
 }
 
 model Drugs {
-  id                        Int                @id @default(autoincrement())
+  id                        Int                         @id @default(autoincrement())
   description               String?
   price                     Float
   name                      String
   isApprovalRequired        Boolean
   group                     String
-  authorizationRequestDrugs AuthorizationRequestDrugs[] // Ensure relation name is clear
-
-  claimRequestDrugs ClaimRequestDrugs[]
+  authorizationRequestDrugs AuthorizationRequestDrugs[]
+  claimRequestDrugs         ClaimRequestDrugs[]
 }
 
 model AuthorizationRequestDrugs {
-  id                          Int                   @id @default(autoincrement())
-  drugId                      Int                   // Removed @unique to allow multiple entries
-  quantity                    Float
-  authorizationRequestId      Int
-  drugs                       Drugs                 @relation(fields: [drugId], references: [id])
-  authorizationRequest        AuthorizationRequest  @relation(fields: [authorizationRequestId], references: [id])
+  id                     Int                  @id @default(autoincrement())
+  drugId                 Int
+  quantity               Float
+  authorizationRequestId Int
+  authorizationRequest   AuthorizationRequest @relation(fields: [authorizationRequestId], references: [id])
+  drugs                  Drugs                @relation(fields: [drugId], references: [id])
+
+  @@index([authorizationRequestId], map: "AuthorizationRequestDrugs_authorizationRequestId_fkey")
+  @@index([drugId], map: "AuthorizationRequestDrugs_drugId_fkey")
 }
 
 model ClaimRequestDrugs {
-  id                          Int                   @id @default(autoincrement())
-  drugId                      Int                   // Removed @unique to allow multiple entries
-  quantity                    Float
-  authorizationRequestId      Int
-  drugs                       Drugs                 @relation(fields: [drugId], references: [id])
-  claimRequest                ClaimRequest  @relation(fields: [authorizationRequestId], references: [id])
+  id                     Int          @id @default(autoincrement())
+  drugId                 Int
+  quantity               Float
+  claimRequestId Int
+  claimRequest           ClaimRequest @relation(fields: [claimRequestId], references: [id])
+  drugs                  Drugs        @relation(fields: [drugId], references: [id])
+
+  @@index([claimRequestId], map: "ClaimRequestDrugs_claimRequestId_fkey")
+  @@index([drugId], map: "ClaimRequestDrugs_drugId_fkey")
 }
 
 model AuthorizationRequest {
-  id            Int         @id @default(autoincrement())
-  policyNo      String
-  healthPlan    String
-  treatmentCost Float
-  receipt       String?
-  hospitalEmail String
-  hospitalPhone String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  hospitalId    Int
-  hospitalName  String
-  enrollee      String
-  submiterId    Int
-  submitedBy    String
-  responsedBy   Int?
-  hmo           HMO?         @relation(fields: [responsedBy], references: [id])
-  status        String      @default("PENDING")
-  hospital      Hospital    @relation("HospitalRequests", fields: [hospitalId], references: [id])
-  diagnosis     Diagnosis[] @relation("DiagnosisRequests_Authorization")
-  treatments    Treatment[] @relation("TreatmentRequests_Authorization")
-  authorizationRequestDrugs AuthorizationRequestDrugs[] // Ensure this relation is clear
-}
+  id                        Int                         @id @default(autoincrement())
+  policyNo                  String
+  healthPlan                String
+  treatmentCost             Float
+  receipt                   String?
+  hospitalEmail             String
+  hospitalPhone             String?
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  hospitalId                Int
+  hospitalName              String
+  enrollee                  String
+  submitedBy                String
+  responsedBy               Int?
+  status                    String                      @default("PENDING")
+  submiterId                Int
+  hospital                  Hospital                    @relation("HospitalRequests", fields: [hospitalId], references: [id])
+  hmo                       HMO?                        @relation(fields: [responsedBy], references: [id])
+  authorizationRequestDrugs AuthorizationRequestDrugs[]
+  diagnosis                 Diagnosis[]                 @relation("DiagnosisRequests_Authorization")
+  treatments                Treatment[]                 @relation("TreatmentRequests_Authorization")
 
-model ClaimRequest {
-  id            Int         @id @default(autoincrement())
-  policyNo      String
-  healthPlan    String
-  treatmentCost Float
-  receipt       String?
-  hospitalEmail String
-  hospitalPhone String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  hospitalId    Int
-  hospitalName  String
-  enrollee      String
-  submiterId    Int
-  submitedBy    String
-  responsedBy   Int?
-  hmo           HMO?         @relation(fields: [responsedBy], references: [id])
-  status        String      @default("ACCEPTED")
-  comment       String?
-  hospital      Hospital    @relation("HospitalClaims", fields: [hospitalId], references: [id])
-  diagnosis     Diagnosis[] @relation("DiagnosisRequests_Claims")
-  treatments    Treatment[] @relation("TreatmentRequests_Claims")
-  ClaimRequestDrugs ClaimRequestDrugs[]
-
+  @@index([responsedBy], map: "AuthorizationRequest_responsedBy_fkey")
   @@index([hospitalId], map: "TreatmentRequest_hospitalId_fkey")
 }
 
+model ClaimRequest {
+  id                Int                 @id @default(autoincrement())
+  policyNo          String
+  healthPlan        String
+  treatmentCost     Float
+  receipt           String?
+  hospitalEmail     String
+  hospitalPhone     String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  hospitalId        Int
+  hospitalName      String
+  enrollee          String
+  submiterId        Int
+  submitedBy        String
+  responsedBy       Int?
+  status            String              @default("ACCEPTED")
+  comment           String?
+  hospital          Hospital            @relation("HospitalClaims", fields: [hospitalId], references: [id])
+  hmo               HMO?                @relation(fields: [responsedBy], references: [id])
+  claimRequestDrugs ClaimRequestDrugs[]
+  diagnosis         Diagnosis[]         @relation("DiagnosisRequests_Claims")
+  treatments        Treatment[]         @relation("TreatmentRequests_Claims")
+
+  @@index([hospitalId], map: "TreatmentRequest_hospitalId_fkey")
+  @@index([responsedBy], map: "ClaimRequest_responsedBy_fkey")
+}
 
 model Notification {
   id        Int      @id @default(autoincrement())
