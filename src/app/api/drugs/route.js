@@ -71,7 +71,7 @@ export async function POST(req) {
       data: {
         name,
         description,
-        price,
+        price: parseFloat(price),
         isApprovalRequired,
         group,
       },
@@ -94,7 +94,13 @@ export async function PUT(req) {
   try {
     const updatedDrug = await prisma.drugs.update({
       where: { id: parseInt(id) },
-      data: { name, description, price, isApprovalRequired, group },
+      data: {
+        name,
+        description,
+        price: parseFloat(price),
+        isApprovalRequired,
+        group,
+      },
     });
     return NextResponse.json(updatedDrug);
   } catch (error) {

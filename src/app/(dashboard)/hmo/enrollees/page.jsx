@@ -21,9 +21,10 @@ const { Option } = Select;
 
 const Enrollees = () => {
   const [enrollees, setEnrollees] = useState([]);
+  const [hospitals, setHospitals] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10000);
   const [total, setTotal] = useState(0);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalType, setModalType] = useState(null); // 'add', 'edit', or 'bulk'
@@ -35,6 +36,7 @@ const Enrollees = () => {
 
   useEffect(() => {
     loadEnrollees();
+    loadHospitals();
   }, [currentPage]);
 
   const loadEnrollees = async () => {
@@ -52,7 +54,24 @@ const Enrollees = () => {
     setLoading(false);
   };
 
+  const loadHospitals = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/hospital?page=${currentPage}&limit=${pageSize}`
+      );
+      const data = await res.json();
+      setHospitals(data.hospitals);
+      // setTotal(data.total);
+    } catch (error) {
+      message.error("Failed to load hospitals.");
+    }
+    setLoading(false);
+  };
+
   const handleAddEnrollee = async (values) => {
+    // return console.log({ ...values });
+
     try {
       const res = await fetch("/api/enrollees", {
         method: "POST",
@@ -345,7 +364,7 @@ const Enrollees = () => {
             >
               <Input />
             </Form.Item>
-            <Form.Item
+            {/* <Form.Item
               label="Plan Type"
               name="planType"
               rules={[
@@ -353,7 +372,24 @@ const Enrollees = () => {
               ]}
             >
               <Input />
+            </Form.Item> */}
+
+            <Form.Item
+              label="Plan Type"
+              name="planType"
+              rules={[{ required: true, message: "Please select a planType!" }]}
+            >
+              <Select
+                id="hospital"
+                className="w-full"
+                placeholder="Select a Plan Type" // Placeholder for better UX
+              >
+                <Select.Option value={"bronze"}>Bronze</Select.Option>
+                <Select.Option value={"silver"}>Silver</Select.Option>
+                <Select.Option value={"gold"}>Gold</Select.Option>
+              </Select>
             </Form.Item>
+
             <Form.Item
               label="Phone Number"
               name="phoneNumber"
@@ -373,9 +409,33 @@ const Enrollees = () => {
                 <Option value="INACTIVE">Inactive</Option>
               </Select>
             </Form.Item>
-            <Form.Item label="Hospital" name="hospital">
+
+            {/* Hospital */}
+            {/* <Form.Item label="Hospital" name="hospital">
               <Input />
+            </Form.Item> */}
+            <Form.Item
+              label="Hospital"
+              name="hospital"
+              rules={[{ required: true, message: "Please select a hospital!" }]}
+            >
+              <Select
+                id="hospital"
+                // onChange={(value) => handleSelectChange("hospital", value)} // Corrected name for value
+                className="w-full"
+                placeholder="Select a hospital" // Placeholder for better UX
+              >
+                {hospitals?.map((hospital) => (
+                  <Select.Option
+                    key={hospital.id}
+                    value={hospital.hospitalName}
+                  >
+                    {hospital.hospitalName}
+                  </Select.Option>
+                ))}
+              </Select>
             </Form.Item>
+
             <Form.Item label="No. of Dependents" name="noOfDependents">
               <Input type="number" />
             </Form.Item>

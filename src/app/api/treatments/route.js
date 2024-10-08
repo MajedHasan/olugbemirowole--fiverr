@@ -70,7 +70,7 @@ export async function POST(req) {
       data: {
         name,
         description,
-        price,
+        price: parseFloat(price),
         isApprovalRequired,
       },
     });
