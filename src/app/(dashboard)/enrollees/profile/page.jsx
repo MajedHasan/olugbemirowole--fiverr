@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
-import { useRef } from "react";
 
 const DigitalIdentityForm = ({ userId }) => {
   const { register, handleSubmit, setValue, reset } = useForm();
@@ -27,6 +26,7 @@ const DigitalIdentityForm = ({ userId }) => {
   const [enrolleeData, setEnrolleeData] = useState(null); // Default is null
   const [user, setUser] = useState();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profilePicture, setProfilePicture] = useState(null); // State to hold the profile picture
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("dcPortal-user"));
@@ -52,7 +52,6 @@ const DigitalIdentityForm = ({ userId }) => {
         setEnrolleeData(null); // No enrollee data found, show form to add data
       } else {
         setEnrolleeData(data);
-
         // Prefill form with enrollee data
         setValue("fullName", data.fullName);
         setValue("policyNo", data.policyNo);
@@ -63,6 +62,7 @@ const DigitalIdentityForm = ({ userId }) => {
         setValue("noOfDependents", data.noOfDependents);
         setStatus(data.status);
         setDependents(data.dependents.map((d) => d.name));
+        setProfilePicture(data.profilePicture); // Assuming `data` has a field for the profile picture URL
       }
     } catch (error) {
       console.error("Error fetching enrollee data:", error);
@@ -103,6 +103,22 @@ const DigitalIdentityForm = ({ userId }) => {
     setIsSubmitting(false);
   };
 
+  // Handle the file upload for profile picture
+  const handleFileChange = (event) => {
+    if (event && event.target && event.target.files) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setProfilePicture(reader.result); // Set the profile picture state to the base64 URL
+        };
+        reader.readAsDataURL(file);
+      }
+    } else {
+      alert("No file selected or event is invalid");
+    }
+  };
+
   // Update the dependents array only when necessary
   const handleDependentChange = (index, value) => {
     const updatedDependents = [...dependents];
@@ -141,7 +157,6 @@ const DigitalIdentityForm = ({ userId }) => {
               {...register("policyNo")}
               id="policyNo"
               placeholder="Policy Number"
-              // disabled={false}
               disabled
             />
           </div>
@@ -226,18 +241,61 @@ const DigitalIdentityForm = ({ userId }) => {
               </div>
             );
           })}
-          {/* <Button type="button" onClick={addDependent} className="bg-teal-600" >
+          <Button
+            type="button"
+            onClick={addDependent}
+            className="bg-teal-600 hidden"
+          >
             Add Dependent
-          </Button> */}
+          </Button>
         </div>
 
         {/* Submit Button */}
         <CardFooter>
-          {/* <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            className="w-full hidden"
+            disabled={isSubmitting}
+          >
             {isSubmitting ? "Updating..." : "Update Information"}
-          </Button> */}
+          </Button>
         </CardFooter>
       </form>
+
+      {/* Profile Picture Section */}
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold mb-2">Profile Picture</h3>
+        <div className="flex flex-col items-center mb-4">
+          {profilePicture ? (
+            <div className="relative">
+              <img
+                src={profilePicture}
+                alt="Profile"
+                className="w-32 h-32 rounded-full border-4 border-gray-300 transition-transform duration-300 ease-in-out hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-black opacity-25 rounded-full transition-opacity duration-300 ease-in-out hover:opacity-0"></div>
+            </div>
+          ) : (
+            <div className="w-32 h-32 rounded-full border-4 border-gray-300 flex items-center justify-center text-gray-400">
+              No Image
+            </div>
+          )}
+        </div>
+
+        <Label htmlFor="profilePicture" className="block mb-2">
+          Upload New Profile Picture
+        </Label>
+        <Input
+          type="file"
+          id="profilePicture"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="mb-4"
+        />
+        <Button className="w-full" onClick={handleFileChange}>
+          Upload Picture
+        </Button>
+      </div>
     </CardContent>
   );
 
