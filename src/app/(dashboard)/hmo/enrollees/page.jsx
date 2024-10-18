@@ -351,9 +351,9 @@ const Enrollees = () => {
             <Form.Item
               label="Policy No"
               name="policyNo"
-              rules={[
-                { required: true, message: "Please input the policy number!" },
-              ]}
+              // rules={[
+              //   { required: true, message: "Please input the policy number!" },
+              // ]}
             >
               <Input />
             </Form.Item>

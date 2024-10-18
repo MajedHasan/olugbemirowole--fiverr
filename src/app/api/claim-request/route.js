@@ -188,6 +188,9 @@ export async function POST(req) {
         submitedBy,
         submiterId,
         status,
+        dob: "",
+        gender: "",
+        company: "",
         diagnosis: {
           connect: diagnosis.map((id) => ({ id })), // Connect diagnoses
         },

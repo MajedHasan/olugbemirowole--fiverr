@@ -25,7 +25,7 @@ model User {
 model Enrollee {
   id             Int         @id @default(autoincrement())
   fullName       String
-  policyNo       String
+  policyNo       String      @unique
   company        String
   planType       String
   phoneNumber    String
@@ -191,6 +191,10 @@ model ClaimRequest {
   responsedBy       Int?
   status            String              @default("ACCEPTED")
   comment           String?
+  dob               String?
+  gender            String?
+  company           String?
+
   hospital          Hospital            @relation("HospitalClaims", fields: [hospitalId], references: [id])
   hmo               HMO?                @relation(fields: [responsedBy], references: [id])
   claimRequestDrugs ClaimRequestDrugs[]

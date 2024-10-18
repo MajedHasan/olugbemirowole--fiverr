@@ -323,6 +323,7 @@ const AuthorizationRequestForm = ({ visible, onClose }) => {
               id="enrollee"
               name="enrollee"
               mode="single"
+              disabled
               value={formData.enrollee}
               onChange={(value) => handleSelectChange("enrollee", value)}
               loading={loadingEnrollees}
@@ -341,14 +342,29 @@ const AuthorizationRequestForm = ({ visible, onClose }) => {
             <label className="block mb-1 font-medium" htmlFor="policyNo">
               Policy No. <span className="text-red-500">*</span>
             </label>
-            <Input
+            {/* <Input
               id="policyNo"
               name="policyNo"
               required
               disabled
               value={formData.policyNo}
               onChange={handleChange}
-            />
+            /> */}
+            <Select
+              id="policyNo"
+              name="policyNo"
+              mode="single"
+              value={formData.policyNo}
+              onChange={(value) => handleSelectChange("enrollee", value)}
+              loading={loadingEnrollees}
+              className="w-full"
+            >
+              {enrolleeOptions?.map((enrollee) => (
+                <Select.Option key={enrollee.id} value={enrollee.id}>
+                  {enrollee.policyNo}
+                </Select.Option>
+              ))}
+            </Select>
           </div>
 
           {/* Health Plan Field */}

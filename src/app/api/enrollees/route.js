@@ -19,14 +19,42 @@ export async function GET(req) {
 
   return NextResponse.json({ enrollees, total });
 }
+// Function to generate a random policyNo
+function generatePolicyNo() {
+  return `SH/${Math.floor(100000 + Math.random() * 900000)}`;
+}
 
-// Create a single enrollee
+// Function to ensure enrollee creation with a unique policyNo
+async function createEnrolleeWithUniquePolicyNo(data) {
+  let enrollee;
+
+  while (!enrollee) {
+    try {
+      // Attempt to create the enrollee
+      enrollee = await prisma.enrollee.create({
+        data,
+      });
+    } catch (error) {
+      // Check if the error is due to a unique constraint violation on policyNo
+      if (error.code === "P2002" && error.meta?.target?.includes("policyNo")) {
+        // Generate a new policyNo and retry
+        data.policyNo = generatePolicyNo();
+      } else {
+        // If it's any other error, throw it
+        throw error;
+      }
+    }
+  }
+
+  return enrollee;
+}
+
 export async function POST(req) {
   try {
     const body = await req.json();
     const {
       fullName,
-      policyNo,
+      policyNo, // This could be undefined
       company,
       planType,
       phoneNumber,
@@ -36,13 +64,16 @@ export async function POST(req) {
       dependents = [], // Default to an empty array if not provided
     } = body;
 
-    // Validate required fields
-    if (!fullName || !policyNo || !phoneNumber || !company || !planType) {
+    // Validate required fields (omit policyNo in validation)
+    if (!fullName || !phoneNumber || !company || !planType) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
+
+    // Generate a policyNo if it's not provided
+    const finalPolicyNo = policyNo || generatePolicyNo();
 
     const role = "ENROLLEES";
     const defaultPassword = "123456";
@@ -57,23 +88,24 @@ export async function POST(req) {
     });
 
     if (user) {
-      // Create new enrollee
-      const enrollee = await prisma.enrollee.create({
-        data: {
-          fullName,
-          company,
-          policyNo,
-          planType,
-          phoneNumber,
-          status,
-          hospital,
-          noOfDependents: parseInt(noOfDependents, 10) || 0, // Default to 0 if conversion fails
-          dependents: {
-            create: dependents.map((dep) => ({ name: dep })),
-          },
-          userId: user.id, // Associate enrollee with the user
+      // Prepare enrollee data
+      const enrolleeData = {
+        fullName,
+        company,
+        policyNo: finalPolicyNo, // Use the generated policy number or the one provided
+        planType,
+        phoneNumber,
+        status,
+        hospital,
+        noOfDependents: parseInt(noOfDependents, 10) || 0, // Default to 0 if conversion fails
+        dependents: {
+          create: dependents.map((dep) => ({ name: dep })),
         },
-      });
+        userId: user.id, // Associate enrollee with the user
+      };
+
+      // Try to create the enrollee, continuously retrying if a unique constraint error occurs
+      const enrollee = await createEnrolleeWithUniquePolicyNo(enrolleeData);
 
       return NextResponse.json(enrollee);
     }

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Modal, message, Select } from "antd";
+import { Button, Modal, message, Select, DatePicker } from "antd";
 // import { uploadFileToFirebase } from "@/lib/firebase";
 import { Input } from "@/components/ui/input";
+import dayjs from "dayjs"; // For date formatting
 
 const ClaimRequestForm = ({ visible, onClose }) => {
   const [formData, setFormData] = useState({
@@ -14,6 +15,9 @@ const ClaimRequestForm = ({ visible, onClose }) => {
     diagnosis: [],
     treatmentCost: 0,
     receipt: null,
+    dob: "",
+    gender: "",
+    company: "",
     treatments: [],
     drugs: [],
     submitedBy: "hospital",
@@ -185,6 +189,7 @@ const ClaimRequestForm = ({ visible, onClose }) => {
           [name]: findEnrollee.fullName,
           policyNo: findEnrollee.policyNo,
           healthPlan: findEnrollee.planType,
+          company: findEnrollee.company,
         });
       } else {
         setFormData({ ...formData, [name]: value });
@@ -252,6 +257,11 @@ const ClaimRequestForm = ({ visible, onClose }) => {
           0
         ) + drugCost,
     }));
+  };
+
+  // Handle date change
+  const handleDateChange = (date, dateString) => {
+    setFormData({ ...formData, dob: dateString });
   };
 
   const handleSubmit = async (e) => {
@@ -323,6 +333,7 @@ const ClaimRequestForm = ({ visible, onClose }) => {
               id="enrollee"
               name="enrollee"
               mode="single"
+              disabled
               value={formData.enrollee}
               onChange={(value) => handleSelectChange("enrollee", value)}
               loading={loadingEnrollees}
@@ -341,14 +352,29 @@ const ClaimRequestForm = ({ visible, onClose }) => {
             <label className="block mb-1 font-medium" htmlFor="policyNo">
               Policy No. <span className="text-red-500">*</span>
             </label>
-            <Input
+            {/* <Input
               id="policyNo"
               name="policyNo"
               required
               disabled
               value={formData.policyNo}
               onChange={handleChange}
-            />
+            /> */}
+            <Select
+              id="policyNo"
+              name="policyNo"
+              mode="single"
+              value={formData.policyNo}
+              onChange={(value) => handleSelectChange("enrollee", value)}
+              loading={loadingEnrollees}
+              className="w-full"
+            >
+              {enrolleeOptions?.map((enrollee) => (
+                <Select.Option key={enrollee.id} value={enrollee.id}>
+                  {enrollee.policyNo}
+                </Select.Option>
+              ))}
+            </Select>
           </div>
 
           {/* Health Plan Field */}
@@ -479,6 +505,53 @@ const ClaimRequestForm = ({ visible, onClose }) => {
               accept="image/*"
               onChange={handleChange}
               className="border border-gray-300 rounded-lg p-2"
+            />
+          </div>
+
+          {/* Date of Birth Field */}
+          <div className="field">
+            <label className="block mb-1 font-medium" htmlFor="dob">
+              Date of Birth <span className="text-red-500">*</span>
+            </label>
+            <DatePicker
+              id="dob"
+              name="dob"
+              value={formData.dob ? dayjs(formData.dob) : null}
+              onChange={handleDateChange}
+              className="w-full"
+            />
+          </div>
+
+          {/* Gender Field */}
+          <div className="field">
+            <label className="block mb-1 font-medium" htmlFor="gender">
+              Gender <span className="text-red-500">*</span>
+            </label>
+            <Select
+              id="gender"
+              name="gender"
+              value={formData.gender}
+              onChange={(value) => handleSelectChange("gender", value)}
+              className="w-full"
+            >
+              <Select.Option value="male">Male</Select.Option>
+              <Select.Option value="female">Female</Select.Option>
+              <Select.Option value="other">Other</Select.Option>
+            </Select>
+          </div>
+
+          {/* Company Field */}
+          <div className="field">
+            <label className="block mb-1 font-medium" htmlFor="company">
+              Company <span className="text-red-500">*</span>
+            </label>
+            <Input
+              id="company"
+              name="company"
+              value={formData.company}
+              onChange={handleChange}
+              required
+              disabled
             />
           </div>
         </div>

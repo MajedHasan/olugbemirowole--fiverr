@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { useEffect, useState } from "react";
 
 // Register the components
 ChartJS.register(
@@ -23,6 +24,45 @@ ChartJS.register(
 );
 
 export default function EnrolleesDashboard() {
+  const [enrolleeData, setEnrolleeData] = useState(null); // Default is null
+  const [user, setUser] = useState();
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("dcPortal-user"));
+    if (user) {
+      setUser(user);
+    } else {
+      console.error("No user data found in local storage");
+    }
+  }, []);
+
+  // Fetch enrollee data on page load using userId
+  async function fetchData() {
+    try {
+      const res = await fetch(`/api/enrollees/${user?.id}`);
+      console.log("Fetching data for user ID:", user?.id);
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch enrollee data");
+      }
+
+      const data = await res.json();
+      if (data.message === "No enrollee data found") {
+        setEnrolleeData(null); // No enrollee data found, show form to add data
+      } else {
+        setEnrolleeData(data);
+      }
+    } catch (error) {
+      console.error("Error fetching enrollee data:", error);
+    }
+  }
+
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
   const data = {
     labels: ["Hospital A", "Hospital B", "Hospital C"],
     datasets: [
@@ -47,21 +87,23 @@ export default function EnrolleesDashboard() {
       {/* Profile Section */}
       <div className="bg-gradient-to-r from-red-400 to-pink-500 shadow-2xl rounded-lg p-6 flex items-center transition-transform transform hover:scale-105">
         <img
-          src={profile.picture}
+          src={enrolleeData?.picture}
           alt="Profile Picture"
           className="rounded-full w-32 h-32 border-4 border-white shadow-lg"
         />
         <div className="ml-4">
-          <h2 className="text-3xl font-extrabold text-white">{profile.name}</h2>
+          <h2 className="text-3xl font-extrabold text-white">
+            {enrolleeData?.fullName}
+          </h2>
           <p className="text-lg text-gray-100">
-            Policy Number: {profile.policyNumber}
+            Policy Number: {enrolleeData?.policyNo}
           </p>
           <p className="text-lg text-gray-100">
-            Health Plan: {profile.healthPlan}
+            Health Plan: {enrolleeData?.planType}
           </p>
-          <button className="mt-4 bg-white text-red-600 font-semibold px-4 py-2 rounded-full shadow hover:bg-gray-200 transition duration-200">
+          {/* <button className="mt-4 bg-white text-red-600 font-semibold px-4 py-2 rounded-full shadow hover:bg-gray-200 transition duration-200">
             Edit Profile
-          </button>
+          </button> */}
         </div>
       </div>
 
