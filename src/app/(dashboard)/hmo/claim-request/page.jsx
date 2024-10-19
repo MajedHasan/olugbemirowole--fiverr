@@ -1,18 +1,17 @@
+// pages/ClaimRequestPage.js
 "use client";
 
 import { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
-import { Modal, Button, Form, Input, Select, Badge } from "antd"; // Import Badge and Form components
-import TextArea from "antd/es/input/TextArea";
-
-const { Option } = Select;
+import { Button, Badge, Form } from "antd";
+import EditClaimRequestModal from "./_components/EditClaimRequestModal";
 
 const ClaimRequestPage = () => {
   const [claimRequests, setClaimRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [currentClaim, setCurrentClaim] = useState(null);
-  const [form] = Form.useForm(); // Create a form instance
+  const [form] = Form.useForm();
   const [user, setUser] = useState(null);
   const [hmo, setHmo] = useState(null);
 
@@ -33,19 +32,12 @@ const ClaimRequestPage = () => {
     if (user) fetchHmo();
   }, [user]);
 
-  // Fetch claim requests data
   useEffect(() => {
     const fetchClaimRequests = async () => {
       try {
         const response = await fetch("/api/claim-request");
         const data = await response.json();
-        if (Array.isArray(data)) {
-          setClaimRequests(data);
-        } else if (data.claimRequests && Array.isArray(data.claimRequests)) {
-          setClaimRequests(data.claimRequests);
-        } else {
-          console.error("Unexpected data format:", data);
-        }
+        setClaimRequests(data.claimRequests || []);
       } catch (error) {
         console.error("Error fetching claim requests:", error);
       } finally {
@@ -56,51 +48,41 @@ const ClaimRequestPage = () => {
     fetchClaimRequests();
   }, []);
 
-  // Open modal for editing
   const handleEdit = (row) => {
-    console.log(row);
-    setCurrentClaim(row); // Store the row data for editing
-    form.setFieldsValue(row); // Populate form fields with current treatment data
-    setIsModalVisible(true); // Open the modal
+    setCurrentClaim(row);
+    form.setFieldsValue(row);
+    setIsModalVisible(true);
   };
 
-  // Close modal
   const handleCancel = () => {
     setIsModalVisible(false);
     setCurrentClaim(null);
   };
 
   const handleFinish = async (values) => {
-    const udpatedClaimRequest = {
+    const updatedClaimRequest = {
       ...currentClaim,
-      status: values.status,
-      policyNo: values.policyNo,
-      enrollee: values.enrollee,
-      treatmentCost: values.treatmentCost,
-      comment: values.comment,
+      ...values,
       responsedBy: hmo?.id,
     };
 
-    // return console.log(udpatedAuthorizationRequest);
-
     try {
       const response = await fetch(`/api/claim-request`, {
-        method: "PUT", // or PATCH depending on your API design
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(udpatedClaimRequest), // Send the edited values to your API
+        body: JSON.stringify(updatedClaimRequest),
       });
 
       if (response.ok) {
         const updatedClaim = await response.json();
-        // Update the claimRequests state with the updated treatment
         setClaimRequests((prevRequests) =>
           prevRequests.map((request) =>
             request.id === updatedClaim.id ? updatedClaim : request
           )
         );
-        handleCancel(); // Close the modal after successful update
+        handleCancel();
       } else {
         console.error("Failed to update the claim request");
       }
@@ -110,6 +92,7 @@ const ClaimRequestPage = () => {
   };
 
   const columns = [
+    // Define table columns
     {
       name: "ID",
       selector: (row) => row?.id || "N/A",
@@ -125,11 +108,6 @@ const ClaimRequestPage = () => {
       selector: (row) => row?.policyNo || "N/A",
       sortable: true,
     },
-    // {
-    //   name: "Health Plan",
-    //   selector: (row) => row?.healthPlan || "N/A",
-    //   sortable: true,
-    // },
     {
       name: "Treatment Cost",
       selector: (row) => (row?.treatmentCost ? `$${row.treatmentCost}` : "N/A"),
@@ -176,13 +154,13 @@ const ClaimRequestPage = () => {
   const getStatusBadge = (status) => {
     switch (status) {
       case "PENDING":
-        return "default"; // Grey
+        return "default";
       case "ACCEPTED":
-        return "processing"; // Green
+        return "processing";
       case "COMPLETED":
-        return "success"; // Blue
+        return "success";
       default:
-        return "default"; // Fallback
+        return "default";
     }
   };
 
@@ -199,117 +177,16 @@ const ClaimRequestPage = () => {
         <p>No records found</p>
       )}
 
-      {/* Modal for Editing */}
+      {/* Use the separated modal component */}
       {currentClaim && (
-        <Modal
-          title="Edit Claim Request"
-          open={isModalVisible}
-          onCancel={handleCancel}
-          footer={null}
-          style={{ top: 20 }} // Adjust modal position if needed
-        >
-          <Form form={form} onFinish={handleFinish}>
-            <Form.Item name="id" label="ID">
-              <Input disabled />
-            </Form.Item>
-            <Form.Item
-              name="enrollee"
-              label="Enrollee"
-              rules={[{ required: true }]}
-            >
-              <Input disabled />
-            </Form.Item>
-            <Form.Item
-              name="policyNo"
-              label="Policy Number"
-              rules={[{ required: true }]}
-            >
-              <Input disabled />
-            </Form.Item>
-            <Form.Item
-              name="treatmentCost"
-              label="Treatment Cost"
-              rules={[{ required: true }]}
-            >
-              <Input type="number" disabled />
-            </Form.Item>
-            <Form.Item name="status" label="Status">
-              <Select>
-                <Option
-                  value="PENDING"
-                  disabled={
-                    currentClaim.status === "PENDING"
-                      ? false
-                      : currentClaim.status === "ACCEPTED"
-                      ? true
-                      : true
-                  }
-                >
-                  Pending
-                </Option>
-                <Option
-                  value="ACCEPTED"
-                  disabled={currentClaim.status === "COMPLETED" ? true : false}
-                >
-                  Accepted
-                </Option>
-                <Option value="COMPLETED">Completed</Option>
-              </Select>
-            </Form.Item>
-            <div className="border rounded p-2 shadow mb-4">
-              <label
-                htmlFor=""
-                className="font-semibold underline underline-offset-4 mb-2 block"
-              >
-                Diagnosis
-              </label>
-              <ul className="list-disc pl-5">
-                {currentClaim?.diagnosis?.map((diagnos) => (
-                  <li key={diagnos.id}>{diagnos?.description}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="border rounded p-2 shadow mb-4">
-              <label
-                htmlFor=""
-                className="font-semibold underline underline-offset-4 mb-2 block"
-              >
-                Treatments
-              </label>
-              <ul className="list-disc pl-5">
-                {currentClaim?.treatments?.map((treatment) => (
-                  <li key={treatment.id}>{treatment?.name}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="border rounded p-2 shadow mb-4">
-              <label
-                htmlFor=""
-                className="font-semibold underline underline-offset-4 mb-2 block"
-              >
-                Drugs
-              </label>
-              <ul className="list-disc pl-5">
-                {currentClaim?.authorizationRequestDrugs?.map((drug) => (
-                  <li key={drug?.drugs?.id}>
-                    {drug?.drugs?.name} || QTY ( {drug?.quantity} )
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <Form.Item name="comment" label="Comment">
-              <TextArea type="text"></TextArea>
-            </Form.Item>
-            <Form.Item>
-              <Button type="primary" htmlType="submit">
-                Save
-              </Button>
-              <Button style={{ marginLeft: "10px" }} onClick={handleCancel}>
-                Cancel
-              </Button>
-            </Form.Item>
-          </Form>
-        </Modal>
+        <EditClaimRequestModal
+          isVisible={isModalVisible}
+          handleCancel={handleCancel}
+          currentClaim={currentClaim}
+          form={form}
+          hmo={hmo}
+          handleFinish={handleFinish}
+        />
       )}
     </div>
   );

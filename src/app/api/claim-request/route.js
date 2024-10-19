@@ -54,7 +54,11 @@ export async function GET(req) {
       orderBy: { id: "desc" },
       include: {
         diagnosis: true,
-        treatments: true,
+        claimRequestTreatments: {
+          include: {
+            treatment: true,
+          },
+        },
         claimRequestDrugs: {
           include: {
             drugs: true, // Include drug details
@@ -108,7 +112,11 @@ export async function GET_SINGLE(req) {
     where: { id: parseInt(id) },
     include: {
       diagnosis: true,
-      treatments: true,
+      claimRequestTreatments: {
+        include: {
+          treatments: true,
+        },
+      },
       claimRequestDrugs: {
         include: {
           drugs: true,
@@ -145,6 +153,9 @@ export async function POST(req) {
     treatments, // Array of treatment IDs
     drugs, // Array of drugs with { drugId, quantity }
     status = "PENDING",
+    dob,
+    gender,
+    company,
   } = await req.json();
 
   // return NextResponse.json(
@@ -188,14 +199,16 @@ export async function POST(req) {
         submitedBy,
         submiterId,
         status,
-        dob: "",
-        gender: "",
-        company: "",
+        dob,
+        gender,
+        company,
         diagnosis: {
           connect: diagnosis.map((id) => ({ id })), // Connect diagnoses
         },
-        treatments: {
-          connect: treatments.map((id) => ({ id })), // Connect treatments
+        claimRequestTreatments: {
+          create: treatments.map((treatmentId) => ({
+            treatmentId,
+          })),
         },
         claimRequestDrugs: {
           create: drugs.map((drug) => ({
@@ -233,23 +246,128 @@ export async function POST(req) {
 }
 
 // Update an claim request
+// export async function PUT(req) {
+//   const {
+//     id,
+//     diagnosis,
+//     treatments,
+//     claimRequestTreatments,
+//     claimRequestDrugs,
+//     hospitalId,
+//     hmo,
+//     responsedBy,
+//     ...data
+//   } = await req.json();
+
+//   try {
+//     const findClaimRequest = await prisma.claimRequest.findUnique({
+//       where: { id: parseInt(id) },
+//     });
+
+//     const findHospital = await prisma.hospital.findUnique({
+//       where: { id: hospitalId },
+//       include: {
+//         user: true,
+//       },
+//     });
+
+//     const updatedRequest = await prisma.claimRequest.update({
+//       where: { id: parseInt(id) },
+//       data: {
+//         ...data,
+//         hospital: {
+//           connect: { id: hospitalId }, // Explicitly connecting the relation
+//         },
+//         hmo: responsedBy
+//           ? {
+//               connect: { id: responsedBy }, // Connect to the HMO (for responsedBy)
+//             }
+//           : undefined,
+//         diagnosis: diagnosis
+//           ? {
+//               set: diagnosis.map((d) => ({ id: d.id })),
+//             }
+//           : undefined,
+//         claimRequestTreatments: claimRequestTreatments
+//           ? {
+//               deleteMany: {}, // Delete existing treatments before adding new ones
+//               create: claimRequestTreatments.map((t) => ({
+//                 treatmentId: t.treatmentId, // Add new treatments
+//                 status: t.status, // If you want to store status for treatments
+//               })),
+//             }
+//           : undefined,
+//         claimRequestDrugs: {
+//           deleteMany: {}, // Optional: Clear existing drugs before adding new ones
+//           create: claimRequestDrugs.map((drug) => ({
+//             drugId: drug.drugId,
+//             quantity: drug.quantity,
+//           })),
+//         },
+//       },
+//     });
+
+//     if (data.status === "ACCEPTED" && findClaimRequest.status === "PENDING") {
+//       // Create notification message
+//       const notificationMessage = `Claim request has been Accepted by HMO for policy number ${data.policyNo}.`;
+
+//       // Send notifications
+//       await sendNotification(findHospital.user.id, notificationMessage, "DB");
+//       await sendNotification(
+//         [
+//           "mdmajedhasan01811@gmail.com",
+//           "noreply@sterlinghealthhmo.com",
+//           "Claims@sterlinghealthmcs.com",
+//           "Claims@sterlinghealthhmo.com",
+//         ],
+//         notificationMessage,
+//         "Email"
+//       );
+//     }
+
+//     return NextResponse.json(updatedRequest);
+//   } catch (error) {
+//     console.error(error);
+//     return NextResponse.json(
+//       { error: "Error updating claim request." },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+// Update a claim request
 export async function PUT(req) {
   const {
     id,
     diagnosis,
-    treatments,
+    claimRequestTreatments,
     claimRequestDrugs,
     hospitalId,
-    hmo,
     responsedBy,
     ...data
   } = await req.json();
 
   try {
+    // Retrieve the existing claim request with necessary relations
     const findClaimRequest = await prisma.claimRequest.findUnique({
       where: { id: parseInt(id) },
+      include: {
+        diagnosis: true,
+        claimRequestTreatments: {
+          include: {
+            treatment: true, // Include treatment details
+          },
+        },
+        claimRequestDrugs: {
+          include: {
+            drugs: true, // Include drug details
+          },
+        },
+        hmo: true,
+      },
     });
 
+    // Retrieve hospital details
     const findHospital = await prisma.hospital.findUnique({
       where: { id: hospitalId },
       include: {
@@ -257,12 +375,81 @@ export async function PUT(req) {
       },
     });
 
-    const updatedRequest = await prisma.claimRequest.update({
+    // Initialize acceptedCost and rejectedCost
+    let acceptedCost = 0;
+    let rejectedCost = 0;
+
+    // Process claimRequestTreatments and calculate costs
+    for (const treatment of claimRequestTreatments) {
+      // Find the existing treatment in the database
+      const existingTreatment = findClaimRequest.claimRequestTreatments.find(
+        (t) => t.id === treatment.id
+      );
+
+      if (existingTreatment) {
+        if (
+          treatment.status === "ACCEPTED" &&
+          existingTreatment.status !== "ACCEPTED"
+        ) {
+          acceptedCost += existingTreatment.treatment.price; // Use treatment's price from existing treatment
+        } else if (
+          treatment.status === "REJECTED" &&
+          existingTreatment.status !== "REJECTED"
+        ) {
+          rejectedCost += existingTreatment.treatment.price; // Use treatment's price from existing treatment
+        }
+      }
+    }
+
+    // Process claimRequestDrugs and calculate costs
+    for (const drug of claimRequestDrugs) {
+      // Find the existing drug in the database
+      const existingDrug = findClaimRequest.claimRequestDrugs.find(
+        (d) => d.id === drug.id
+      );
+
+      if (existingDrug) {
+        // Handle accepted status: use acceptedQuantity for cost calculations
+        if (drug.status === "ACCEPTED") {
+          // Only add to accepted cost if the status has changed from a previous state
+          if (existingDrug.status !== "ACCEPTED") {
+            acceptedCost += existingDrug.drugs.price * drug.acceptedQuantity; // Use acceptedQuantity for cost calculations
+          }
+
+          // Check if some quantities were not accepted (remaining quantities are rejected)
+          const remainingRejectedQuantity =
+            drug.quantity - drug.acceptedQuantity;
+
+          // If there are still quantities left to reject, calculate their cost
+          if (remainingRejectedQuantity > 0) {
+            rejectedCost +=
+              existingDrug.drugs.price * remainingRejectedQuantity;
+          }
+        }
+
+        // Handle rejected status: account for any quantities that were not accepted
+        if (drug.status === "REJECTED") {
+          const totalQuantity = drug.quantity; // Total quantity of the drug
+          const acceptedQuantity = drug.acceptedQuantity || 0; // Quantity accepted so far
+
+          // Calculate how many remain to be rejected (if any)
+          const remainingQuantityToReject = totalQuantity - acceptedQuantity;
+
+          if (remainingQuantityToReject > 0) {
+            rejectedCost +=
+              existingDrug.drugs.price * remainingQuantityToReject; // Use remaining quantity to calculate rejected cost
+          }
+        }
+      }
+    }
+
+    // Update the claim request in the database
+    await prisma.claimRequest.update({
       where: { id: parseInt(id) },
       data: {
         ...data,
         hospital: {
-          connect: { id: hospitalId }, // Explicitly connecting the relation
+          connect: { id: hospitalId }, // Explicitly connect the hospital
         },
         hmo: responsedBy
           ? {
@@ -274,21 +461,48 @@ export async function PUT(req) {
               set: diagnosis.map((d) => ({ id: d.id })),
             }
           : undefined,
-        treatments: treatments
-          ? {
-              set: treatments.map((t) => ({ id: t.id })),
-            }
-          : undefined,
+        claimRequestTreatments: {
+          deleteMany: {}, // Clear existing treatments before adding new ones
+          create: claimRequestTreatments.map((t) => ({
+            treatmentId: t.treatmentId, // Add new treatments
+            status: t.status, // Store status for treatments
+          })),
+        },
         claimRequestDrugs: {
-          deleteMany: {}, // Optional: Clear existing drugs before adding new ones
+          deleteMany: {}, // Clear existing drugs before adding new ones
           create: claimRequestDrugs.map((drug) => ({
             drugId: drug.drugId,
             quantity: drug.quantity,
+            status: drug.status,
+            acceptedQuantity: parseFloat(drug.acceptedQuantity),
           })),
         },
+        acceptedCost: findClaimRequest.acceptedCost + acceptedCost, // Update acceptedCost
+        rejectedCost: findClaimRequest.rejectedCost + rejectedCost, // Update rejectedCost
       },
     });
 
+    // Fetch the updated claim with all related data to return it in the response
+    const updatedClaimRequest = await prisma.claimRequest.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        diagnosis: true,
+        claimRequestTreatments: {
+          include: {
+            treatment: true, // Include treatment details
+          },
+        },
+        claimRequestDrugs: {
+          include: {
+            drugs: true, // Include drug details
+          },
+        },
+        hmo: true,
+        hospital: true, // Include hospital details
+      },
+    });
+
+    // Check if the claim request has been accepted and notify if necessary
     if (data.status === "ACCEPTED" && findClaimRequest.status === "PENDING") {
       // Create notification message
       const notificationMessage = `Claim request has been Accepted by HMO for policy number ${data.policyNo}.`;
@@ -307,7 +521,7 @@ export async function PUT(req) {
       );
     }
 
-    return NextResponse.json(updatedRequest);
+    return NextResponse.json(updatedClaimRequest);
   } catch (error) {
     console.error(error);
     return NextResponse.json(

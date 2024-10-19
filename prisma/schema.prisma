@@ -102,13 +102,13 @@ model Diagnosis {
 }
 
 model Treatment {
-  id                    Int                    @id @default(autoincrement())
-  description           String?
-  price                 Float
-  isApprovalRequired    Boolean
-  name                  String
-  authorizationRequests AuthorizationRequest[] @relation("TreatmentRequests_Authorization")
-  claimRequests         ClaimRequest[]         @relation("TreatmentRequests_Claims")
+  id                          Int                       @id @default(autoincrement())
+  description                 String?
+  price                       Float
+  isApprovalRequired          Boolean
+  name                        String
+  authorizationRequests       AuthorizationRequest[]    @relation("TreatmentRequests_Authorization")
+  ClaimRequestTreatment       ClaimRequestTreatment[]
 }
 
 model Drugs {
@@ -135,12 +135,14 @@ model AuthorizationRequestDrugs {
 }
 
 model ClaimRequestDrugs {
-  id                     Int          @id @default(autoincrement())
+  id                     Int              @id @default(autoincrement())
   drugId                 Int
   quantity               Float
   claimRequestId Int
-  claimRequest           ClaimRequest @relation(fields: [claimRequestId], references: [id])
-  drugs                  Drugs        @relation(fields: [drugId], references: [id])
+  claimRequest           ClaimRequest     @relation(fields: [claimRequestId], references: [id])
+  drugs                  Drugs            @relation(fields: [drugId], references: [id])
+  status                 TreatmentStatus  @default(PENDING)  // ACCEPTED, REJECTED, or other custom statuses
+  acceptedQuantity       Float            @default(0)
 
   @@index([claimRequestId], map: "ClaimRequestDrugs_claimRequestId_fkey")
   @@index([drugId], map: "ClaimRequestDrugs_drugId_fkey")
@@ -178,6 +180,8 @@ model ClaimRequest {
   policyNo          String
   healthPlan        String
   treatmentCost     Float
+  acceptedCost      Float               @default(0) // Cost of accepted treatments
+  rejectedCost      Float               @default(0) // Cost of rejected treatments
   receipt           String?
   hospitalEmail     String
   hospitalPhone     String?
@@ -198,11 +202,24 @@ model ClaimRequest {
   hospital          Hospital            @relation("HospitalClaims", fields: [hospitalId], references: [id])
   hmo               HMO?                @relation(fields: [responsedBy], references: [id])
   claimRequestDrugs ClaimRequestDrugs[]
+  claimRequestTreatments ClaimRequestTreatment[] // Relation to claimRequestTreatments (New structure)
   diagnosis         Diagnosis[]         @relation("DiagnosisRequests_Claims")
-  treatments        Treatment[]         @relation("TreatmentRequests_Claims")
 
   @@index([hospitalId], map: "TreatmentRequest_hospitalId_fkey")
   @@index([responsedBy], map: "ClaimRequest_responsedBy_fkey")
+}
+
+model ClaimRequestTreatment {
+  id                Int             @id @default(autoincrement())
+  claimRequestId    Int
+  treatmentId       Int
+  status            TreatmentStatus @default(PENDING)  // ACCEPTED, REJECTED, or other custom statuses
+
+  claimRequest      ClaimRequest    @relation(fields: [claimRequestId], references: [id])
+  treatment         Treatment       @relation(fields: [treatmentId], references: [id])
+
+  @@index([claimRequestId], map: "ClaimRequest_claimRequestId_fkey")
+  @@index([treatmentId], map: "ClaimRequestTreatment_treatmentId_fkey")
 }
 
 model Notification {
@@ -232,4 +249,10 @@ enum Permission {
   ACCOUNT
   CLAIMS_DEPARTMENT
   CUSTOMER_CARE
+}
+
+enum TreatmentStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }

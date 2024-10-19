@@ -191,6 +191,19 @@ const ClaimRequestPage = () => {
                         style={{ color: "green", fontWeight: "bold" }}
                       >{`$${selectedClaim.treatmentCost}`}</Text>
                     </Row>
+                    {/* New Rows for Accepted and Rejected Costs */}
+                    <Row justify="space-between">
+                      <Text strong>Accepted Cost:</Text>
+                      <Text style={{ color: "green", fontWeight: "bold" }}>
+                        ${selectedClaim.acceptedCost}
+                      </Text>
+                    </Row>
+                    <Row justify="space-between">
+                      <Text strong>Rejected Cost:</Text>
+                      <Text style={{ color: "red", fontWeight: "bold" }}>
+                        ${selectedClaim.rejectedCost}
+                      </Text>
+                    </Row>
                   </Space>
                 </Card>
               </Col>
@@ -333,11 +346,20 @@ const ClaimRequestPage = () => {
                   </Title>
                   <Divider />
                   <List
-                    dataSource={selectedClaim.treatments}
+                    dataSource={selectedClaim.claimRequestTreatments}
                     renderItem={(item) => (
                       <List.Item>
                         <Text>
-                          {item.name} - ${item.price}
+                          {item.treatment.name} - ${item.treatment.price} &nbsp;
+                          <Tag color={getStatusTagColor(item.status)}>
+                            {item.status}
+                          </Tag>
+                          {item.status === "ACCEPTED" && (
+                            <Text>
+                              {" "}
+                              (Accepted Quantity: {item.acceptedQuantity})
+                            </Text>
+                          )}
                         </Text>
                       </List.Item>
                     )}
@@ -366,7 +388,16 @@ const ClaimRequestPage = () => {
                       <List.Item>
                         <Text>
                           {item.drugs.name} (Qty: {item.quantity}) - $
-                          {item.drugs.price}
+                          {item.drugs.price} &nbsp;
+                          <Tag color={getStatusTagColor(item.status)}>
+                            {item.status}
+                          </Tag>
+                          {item.status === "ACCEPTED" && (
+                            <Text>
+                              {" "}
+                              (Accepted Quantity: {item.acceptedQuantity})
+                            </Text>
+                          )}
                         </Text>
                       </List.Item>
                     )}
