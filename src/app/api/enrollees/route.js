@@ -7,11 +7,19 @@ const prisma = new PrismaClient();
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
-  const page = parseInt(searchParams.get("page") || "1", 10);
-  const limit = parseInt(searchParams.get("limit") || "10", 10);
+  // Fetching parameters from the URL
+  const pageParam = parseInt(searchParams.get("page"), 10);
+  const limitParam = parseInt(searchParams.get("limit"), 10);
+
+  // Validate parameters
+  const page = isNaN(pageParam) || pageParam < 1 ? 1 : pageParam; // Default to 1 if not a positive integer
+  const limit = isNaN(limitParam) || limitParam < 1 ? 10 : limitParam; // Default to 10 if not a positive integer
+
+  // Calculate skip safely
+  const skip = (page - 1) * limit;
 
   const enrollees = await prisma.enrollee.findMany({
-    skip: (page - 1) * limit,
+    skip,
     take: limit,
   });
 

@@ -35,6 +35,8 @@ const AuthorizationRequestForm = ({ visible, onClose }) => {
 
   const [user, setUser] = useState(null);
   const [hospital, setHospital] = useState(null);
+  const [hmo, setHmo] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("dcPortal-user");
@@ -50,21 +52,44 @@ const AuthorizationRequestForm = ({ visible, onClose }) => {
       if (!user) return; // Ensure user is available
 
       try {
-        const response = await fetch(`/api/hospital/single?id=${user.id}`); // Adjust the endpoint
+        const url =
+          user?.role === "HOSPITAL"
+            ? `/api/hospital/single?id=${user.id}`
+            : `/api/hospital`;
+
+        const response = await fetch(url); // Adjust the endpoint
         const data = await response.json();
-        setHospital(data); // Assuming data is an array of diagnosis options
-        setFormData({
-          ...formData,
-          hospitalEmail: data.email,
-          hospitalPhone: data.phoneNumber,
-          hospitalName: data.hospitalName,
-        });
+
+        if (user?.role === "HOSPITAL") {
+          setHospital(data); // Assuming data is an array of diagnosis options
+          setFormData({
+            ...formData,
+            hospitalEmail: data.email,
+            hospitalPhone: data.phoneNumber,
+            hospitalName: data.hospitalName,
+          });
+        } else {
+          setHospital(data.hospitals);
+        }
       } catch (error) {
         message.error("Error fetching Hospital options");
       }
     };
+    const fetchHmo = async () => {
+      if (!user) return; // Ensure user is available
+
+      try {
+        const response = await fetch(`/api/hmo/single?id=${user?.id}`); // Adjust the endpoint
+        const data = await response.json();
+        setHmo(data);
+        console.log("Hmo", data);
+      } catch (error) {
+        message.error("Error fetching Hmo");
+      }
+    };
 
     fetchHospital();
+    fetchHmo();
   }, [user]);
 
   // Fetch Enrollees from the Enrollees/ByHospitalName API
@@ -72,11 +97,14 @@ const AuthorizationRequestForm = ({ visible, onClose }) => {
     const loadEnrollees = async () => {
       setLoadingEnrollees(true);
       try {
-        const res = await fetch(
-          `/api/enrollees/byHospitalName?hospitalName=${
-            hospital?.hospitalName
-          }&page=${0}&limit=${1000}`
-        );
+        const url =
+          user?.role === "HOSPITAL"
+            ? `/api/enrollees/byHospitalName?hospitalName=${
+                hospital?.hospitalName
+              }&page=${0}&limit=${1000}`
+            : `/api/enrollees?page=${0}&limit=${1000}`;
+
+        const res = await fetch(url);
         const data = await res.json();
         setEnrolleeOptions(data.enrollees);
       } catch (error) {
@@ -255,6 +283,8 @@ const AuthorizationRequestForm = ({ visible, onClose }) => {
   };
 
   const handleSubmit = async (e) => {
+    setLoading(true);
+
     e.preventDefault();
     let receiptUrl = "";
 
@@ -271,6 +301,15 @@ const AuthorizationRequestForm = ({ visible, onClose }) => {
     try {
       console.log(formData, receiptUrl);
 
+      let hospitalId;
+      let submiterId;
+      let submitedBy;
+
+      hospitalId =
+        user?.role === "HOSPITAL" ? hospital.id : formData.hospitalId;
+      submiterId = user?.role === "HOSPITAL" ? hospital.id : hmo?.id;
+      submitedBy = user?.role === "HOSPITAL" ? "HOSPITAL" : "HMO";
+
       const response = await fetch("/api/authorization-request", {
         method: "POST",
         headers: {
@@ -279,8 +318,9 @@ const AuthorizationRequestForm = ({ visible, onClose }) => {
         body: JSON.stringify({
           ...formData,
           receipt: receiptUrl,
-          hospitalId: hospital?.id,
-          submiterId: hospital?.id,
+          hospitalId: hospitalId,
+          submiterId: submiterId,
+          submitedBy,
         }),
       });
 
@@ -292,6 +332,21 @@ const AuthorizationRequestForm = ({ visible, onClose }) => {
       }
     } catch (error) {
       message.error("Error submitting treatment request. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelectHospital = (id) => {
+    const findHospital = hospital.find((h) => h.id === id);
+    if (findHospital) {
+      setFormData({
+        ...formData,
+        hospitalEmail: findHospital.email,
+        hospitalPhone: findHospital.phoneNumber,
+        hospitalName: findHospital.hospitalName,
+        hospitalId: findHospital.id,
+      });
     }
   };
 
@@ -500,6 +555,30 @@ const AuthorizationRequestForm = ({ visible, onClose }) => {
         </div>
 
         {/* Non-editable Hospital Info Section */}
+        {user?.role === "HMO" && (
+          <div className="border-t mt-6 pt-4">
+            <div className="field">
+              <label className="block mb-1 font-medium" htmlFor="policyNo">
+                Select Hospital. <span className="text-red-500">*</span>
+              </label>
+              <Select
+                id="hospitalId"
+                name="hospitalId"
+                mode="single"
+                value={formData.hospitalId}
+                onChange={(value) => handleSelectHospital(value)}
+                loading={loadingEnrollees}
+                className="w-full"
+              >
+                {hospital?.map((h) => (
+                  <Select.Option key={h.id} value={h.id}>
+                    {h.hospitalName}
+                  </Select.Option>
+                ))}
+              </Select>
+            </div>
+          </div>
+        )}
         <div className="border-t mt-6 pt-4">
           <h3 className="font-semibold mb-2">Hospital Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -547,8 +626,8 @@ const AuthorizationRequestForm = ({ visible, onClose }) => {
 
         {/* Submit Button */}
         <div className="flex justify-end mt-4">
-          <Button type="primary" htmlType="submit">
-            Submit
+          <Button type="primary" htmlType="submit" disabled={loading}>
+            {loading ? "Submiting..." : "Submit"}
           </Button>
         </div>
       </form>

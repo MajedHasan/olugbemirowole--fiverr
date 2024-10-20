@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
 import { Modal, Button, Form, Input, Select, Badge } from "antd"; // Import Badge and Form components
+import AuthorizationRequestForm from "../../hospital/_components/AuthorizationRequestForm";
 
 const { Option } = Select;
 
@@ -14,6 +15,8 @@ const AuthorizationRequestPage = () => {
   const [form] = Form.useForm(); // Create a form instance
   const [user, setUser] = useState(null);
   const [hmo, setHmo] = useState(null);
+  const [isAuthorizationPopupVisible, setIsAuthorizationPopupVisible] =
+    useState(false);
 
   useEffect(() => {
     const response = JSON.parse(localStorage.getItem("dcPortal-user"));
@@ -193,9 +196,17 @@ const AuthorizationRequestPage = () => {
     <div className="p-6">
       <div className="flex lg:flex-row flex-col-reverse gap-4 items-center justify-between">
         <h1 className="text-2xl font-bold mb-4">Authorization Requests</h1>
-        <Button type="primary" className="!bg-primary">
+        <Button
+          type="primary"
+          className="!bg-primary"
+          onClick={() => setIsAuthorizationPopupVisible(true)}
+        >
           Create Request
         </Button>
+        <AuthorizationRequestForm
+          visible={isAuthorizationPopupVisible}
+          onClose={() => setIsAuthorizationPopupVisible(false)}
+        />
       </div>
       {loading ? (
         <p>Loading...</p>

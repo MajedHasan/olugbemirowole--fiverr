@@ -25,6 +25,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import AuthorizationRequestForm from "./_components/AuthorizationRequestForm";
 import ClaimRequestForm from "./_components/ClaimRequestForm";
+import BulkClaimRequestForm from "./_components/BulkClaimRequestForm";
 
 // Register the components
 ChartJS.register(
@@ -42,6 +43,7 @@ const HospitalDashboard = () => {
   const [isAuthorizationPopupVisible, setIsAuthorizationPopupVisible] =
     useState(false);
   const [isClaimPopupVisible, setIsClaimPopupVisible] = useState(false);
+  const [isBulkClaimPopupVisible, setIsBulkClaimPopupVisible] = useState(false);
 
   const data = {
     labels: ["January", "February", "March", "April"],
@@ -60,6 +62,18 @@ const HospitalDashboard = () => {
     <>
       <div>
         <div className="flex items-center justify-end gap-4">
+          <BulkClaimRequestForm
+            visible={isBulkClaimPopupVisible}
+            onClose={() => setIsBulkClaimPopupVisible(false)}
+          />
+          <Button
+            type="default"
+            onClick={() => setIsBulkClaimPopupVisible(true)}
+            // className="!bg-third"
+            style={{ marginBottom: "16px" }}
+          >
+            Bulk Upload
+          </Button>
           <ClaimRequestForm
             visible={isClaimPopupVisible}
             onClose={() => setIsClaimPopupVisible(false)}
