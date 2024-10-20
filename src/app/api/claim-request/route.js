@@ -235,6 +235,10 @@ export async function POST(req) {
       "Email"
     );
 
+    if (hospitalPhone) {
+      await sendNotification(hospitalPhone, notificationMessage, "SMS");
+    }
+
     return NextResponse.json(claimRequest, { status: 201 });
   } catch (error) {
     console.error(error);
