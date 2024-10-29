@@ -41,18 +41,20 @@ const AuthorizationRequestPage = () => {
   useEffect(() => {
     const fetchAuthorizationRequests = async () => {
       try {
+        setLoading(true);
         const response = await fetch(
           `/api/authorization-request?userId=${user?.id}`
         );
         const data = await response.json();
-        if (Array.isArray(data)) {
-          setAuthorizationRequests(data);
+        if (Array.isArray(data.authorizationRequests)) {
+          setAuthorizationRequests(data.authorizationRequests);
         } else {
           console.error("Unexpected data format:", data);
         }
       } catch (error) {
         console.error("Error fetching authorization requests:", error);
       } finally {
+        console.log(authorizationRequests);
         setLoading(false);
       }
     };
@@ -259,6 +261,16 @@ const AuthorizationRequestPage = () => {
                   <Divider />
                   <Text>
                     {new Date(selectedRequest.createdAt).toLocaleDateString()}
+                  </Text>
+
+                  <Title level={5} style={{ color: "#555" }}>
+                    Authorization Code
+                  </Title>
+                  <Divider />
+                  <Text>
+                    {selectedRequest.authorizationCode
+                      ? selectedRequest.authorizationCode
+                      : " N/A"}
                   </Text>
                 </Card>
               </Col>

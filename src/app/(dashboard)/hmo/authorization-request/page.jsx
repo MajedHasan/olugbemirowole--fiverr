@@ -2,7 +2,34 @@
 
 import { useEffect, useState } from "react";
 import DataTable from "react-data-table-component";
-import { Modal, Button, Form, Input, Select, Badge } from "antd"; // Import Badge and Form components
+import {
+  Row,
+  Col,
+  Modal,
+  Button,
+  Form,
+  Input,
+  Select,
+  Card,
+  Badge,
+  Divider,
+  Tooltip,
+  Tag,
+} from "antd";
+import {
+  MedicineBoxOutlined,
+  MoneyCollectOutlined,
+  BarcodeOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  HomeOutlined,
+  UserOutlined,
+  FileDoneOutlined,
+  SolutionOutlined,
+  InfoCircleOutlined,
+  HeartOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
 import AuthorizationRequestForm from "../../hospital/_components/AuthorizationRequestForm";
 
 const { Option } = Select;
@@ -12,11 +39,15 @@ const AuthorizationRequestPage = () => {
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [currentAuthorization, setCurrentAuthorization] = useState(null);
-  const [form] = Form.useForm(); // Create a form instance
+  const [form] = Form.useForm();
   const [user, setUser] = useState(null);
   const [hmo, setHmo] = useState(null);
   const [isAuthorizationPopupVisible, setIsAuthorizationPopupVisible] =
     useState(false);
+
+  const isStatusEditable =
+    currentAuthorization?.status !== "ACCEPTED" &&
+    currentAuthorization?.status !== "REJECTED";
 
   useEffect(() => {
     const response = JSON.parse(localStorage.getItem("dcPortal-user"));
@@ -76,29 +107,23 @@ const AuthorizationRequestPage = () => {
   };
 
   const handleFinish = async (values) => {
-    const udpatedAuthorizationRequest = {
+    const updatedAuthorizationRequest = {
       ...currentAuthorization,
       status: values.status,
-      policyNo: values.policyNo,
-      enrollee: values.enrollee,
-      treatmentCost: values.treatmentCost,
       responsedBy: hmo?.id,
     };
 
-    // return console.log(udpatedAuthorizationRequest);
-
     try {
       const response = await fetch(`/api/authorization-request`, {
-        method: "PUT", // or PATCH depending on your API design
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(udpatedAuthorizationRequest), // Send the edited values to your API
+        body: JSON.stringify(updatedAuthorizationRequest),
       });
 
       if (response.ok) {
         const updatedAuthorization = await response.json();
-        // Update the treatmentRequests state with the updated treatment
         setAuthorizationRequests((prevRequests) =>
           prevRequests.map((request) =>
             request.id === updatedAuthorization.id
@@ -131,11 +156,6 @@ const AuthorizationRequestPage = () => {
       selector: (row) => row?.policyNo || "N/A",
       sortable: true,
     },
-    // {
-    //   name: "Health Plan",
-    //   selector: (row) => row?.healthPlan || "N/A",
-    //   sortable: true,
-    // },
     {
       name: "Treatment Cost",
       selector: (row) => (row?.treatmentCost ? `$${row.treatmentCost}` : "N/A"),
@@ -147,8 +167,8 @@ const AuthorizationRequestPage = () => {
       sortable: true,
     },
     {
-      name: "Hospital Email",
-      selector: (row) => row?.hospitalEmail || "N/A",
+      name: "Authorization Code",
+      selector: (row) => row?.authorizationCode || "N/A",
       sortable: true,
     },
     {
@@ -164,7 +184,7 @@ const AuthorizationRequestPage = () => {
       sortable: true,
     },
     {
-      name: "Submited At",
+      name: "Submitted At",
       selector: (row) =>
         row?.createdAt ? new Date(row.createdAt).toLocaleString() : "N/A",
       sortable: true,
@@ -172,7 +192,11 @@ const AuthorizationRequestPage = () => {
     {
       name: "Actions",
       cell: (row) => (
-        <Button type="primary" onClick={() => handleEdit(row)}>
+        <Button
+          type="primary"
+          icon={<EditOutlined />}
+          onClick={() => handleEdit(row)}
+        >
           Edit
         </Button>
       ),
@@ -219,113 +243,276 @@ const AuthorizationRequestPage = () => {
       {/* Modal for Editing */}
       {currentAuthorization && (
         <Modal
-          title="Edit Treatment Request"
+          title={<h2 style={{ color: "#1890ff" }}>Authorization Request</h2>}
           open={isModalVisible}
           onCancel={handleCancel}
           footer={null}
-          style={{ top: 20 }} // Adjust modal position if needed
+          width={900}
+          centered
+          bodyStyle={{ padding: "20px", backgroundColor: "#f0f2f5" }}
         >
-          <Form form={form} onFinish={handleFinish}>
-            <Form.Item name="id" label="ID">
-              <Input disabled />
-            </Form.Item>
-            <Form.Item
-              name="enrollee"
-              label="Enrollee"
-              rules={[{ required: true }]}
-            >
-              <Input disabled />
-            </Form.Item>
-            <Form.Item
-              name="policyNo"
-              label="Policy Number"
-              rules={[{ required: true }]}
-            >
-              <Input disabled />
-            </Form.Item>
-            <Form.Item
-              name="treatmentCost"
-              label="Treatment Cost"
-              rules={[{ required: true }]}
-            >
-              <Input type="number" disabled />
-            </Form.Item>
-            <Form.Item name="status" label="Status">
-              <Select>
-                <Option
-                  value="PENDING"
-                  disabled={
-                    currentAuthorization.status === "PENDING"
-                      ? false
-                      : currentAuthorization.status === "ACCEPTED"
-                      ? true
-                      : true
+          <Form
+            form={form}
+            onFinish={handleFinish}
+            layout="vertical"
+            style={{ fontFamily: "'Roboto', sans-serif" }}
+          >
+            {/* Primary Information */}
+            <Divider orientation="left">
+              <Tag color="blue" icon={<FileDoneOutlined />}>
+                Basic Information
+              </Tag>
+            </Divider>
+            <Row gutter={[16, 16]} align="middle">
+              <Col span={8}>
+                <Card>
+                  <p>
+                    <strong>Authorization ID:</strong> {currentAuthorization.id}
+                  </p>
+                  <p>
+                    <strong>Policy Number:</strong>{" "}
+                    {currentAuthorization.policyNo}
+                  </p>
+                  <p>
+                    <strong>Health Plan:</strong>{" "}
+                    <Tag color="gold">{currentAuthorization.healthPlan}</Tag>
+                  </p>
+                </Card>
+              </Col>
+              <Col span={8}>
+                <Card>
+                  <Form.Item name="status" label="Status">
+                    <Select>
+                      <Option
+                        value="PENDING"
+                        disabled={currentAuthorization.status !== "PENDING"}
+                      >
+                        Pending
+                      </Option>
+                      <Option
+                        value="ACCEPTED"
+                        disabled={currentAuthorization.status !== "PENDING"}
+                      >
+                        Accepted
+                      </Option>
+                      <Option
+                        value="REJECTED"
+                        disabled={currentAuthorization.status !== "PENDING"}
+                      >
+                        Rejected
+                      </Option>
+                      <Option
+                        value="COMPLETED"
+                        disabled={currentAuthorization.status !== "ACCEPTED"}
+                      >
+                        Completed
+                      </Option>
+                    </Select>
+                  </Form.Item>
+                  <p>
+                    <strong>Submitted By:</strong>{" "}
+                    {currentAuthorization.submitedBy}
+                  </p>
+                  <p>
+                    <strong>Responded By:</strong>{" "}
+                    {currentAuthorization.responsedBy}
+                  </p>
+                </Card>
+              </Col>
+              <Col span={8}>
+                <Card>
+                  <p>
+                    <strong>Created At:</strong>{" "}
+                    {new Date(currentAuthorization.createdAt).toLocaleString()}
+                  </p>
+                  <p>
+                    <strong>Updated At:</strong>{" "}
+                    {new Date(currentAuthorization.updatedAt).toLocaleString()}
+                  </p>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Hospital & HMO Information */}
+            <Divider orientation="left">
+              <Tag color="green" icon={<SolutionOutlined />}>
+                Hospital & HMO Information
+              </Tag>
+            </Divider>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Card
+                  title={
+                    <span>
+                      <HomeOutlined /> Hospital Information
+                    </span>
                   }
+                  bordered={false}
+                  style={{
+                    borderRadius: "10px",
+                    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+                  }}
                 >
-                  Pending
-                </Option>
-                <Option
-                  value="ACCEPTED"
-                  disabled={
-                    currentAuthorization.status === "COMPLETED" ? true : false
+                  <p>
+                    <strong>Name:</strong> {currentAuthorization.hospitalName}
+                  </p>
+                  <p>
+                    <MailOutlined /> {currentAuthorization.hospitalEmail}
+                  </p>
+                  <p>
+                    <PhoneOutlined /> {currentAuthorization.hospitalPhone}
+                  </p>
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card
+                  title={
+                    <span>
+                      <UserOutlined /> HMO Information
+                    </span>
                   }
+                  bordered={false}
+                  style={{
+                    borderRadius: "10px",
+                    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+                  }}
                 >
-                  Accepted
-                </Option>
-                <Option value="COMPLETED">Completed</Option>
-              </Select>
-            </Form.Item>
-            <div className="border rounded p-2 shadow mb-4">
-              <label
-                htmlFor=""
-                className="font-semibold underline underline-offset-4 mb-2 block"
-              >
+                  <p>
+                    <strong>Email:</strong> {currentAuthorization.hmo?.email}
+                  </p>
+                  <p>
+                    <strong>Phone:</strong>{" "}
+                    {currentAuthorization.hmo?.phoneNumber}
+                  </p>
+                  <p>
+                    <strong>Permissions:</strong>{" "}
+                    <Tag color="blue">
+                      {currentAuthorization.hmo?.permissions}
+                    </Tag>
+                  </p>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Cost and Authorization */}
+            <Divider orientation="left">
+              <Tag color="volcano" icon={<BarcodeOutlined />}>
+                Cost & Authorization
+              </Tag>
+            </Divider>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Card
+                  style={{ borderRadius: "10px", backgroundColor: "#fff7e6" }}
+                  bordered={false}
+                >
+                  <MoneyCollectOutlined
+                    style={{ fontSize: "18px", color: "#fa8c16" }}
+                  />
+                  <span style={{ marginLeft: "8px" }}>
+                    <strong>Treatment Cost:</strong> $
+                    {currentAuthorization.treatmentCost}
+                  </span>
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card
+                  style={{ borderRadius: "10px", backgroundColor: "#f9f0ff" }}
+                  bordered={false}
+                >
+                  <BarcodeOutlined
+                    style={{ fontSize: "18px", color: "#722ed1" }}
+                  />
+                  <span style={{ marginLeft: "8px" }}>
+                    <strong>Authorization Code:</strong>{" "}
+                    {currentAuthorization.authorizationCode}
+                  </span>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Diagnosis */}
+            <Divider orientation="left">
+              <Tag color="purple" icon={<HeartOutlined />}>
                 Diagnosis
-              </label>
-              <ul className="list-disc pl-5">
-                {currentAuthorization?.diagnosis?.map((diagnos) => (
-                  <li key={diagnos.id}>{diagnos?.description}</li>
+              </Tag>
+            </Divider>
+            <Card
+              bordered={false}
+              style={{
+                backgroundColor: "#fafafa",
+                borderRadius: 10,
+                padding: "16px",
+              }}
+            >
+              <ul>
+                {currentAuthorization?.diagnosis?.map((diagnosis, idx) => (
+                  <li key={idx}>
+                    <Tooltip title={diagnosis.description}>
+                      <MedicineBoxOutlined /> {diagnosis.name} ({diagnosis.code}
+                      )
+                    </Tooltip>
+                  </li>
                 ))}
               </ul>
-            </div>
-            <div className="border rounded p-2 shadow mb-4">
-              <label
-                htmlFor=""
-                className="font-semibold underline underline-offset-4 mb-2 block"
-              >
+            </Card>
+
+            {/* Treatments */}
+            <Divider orientation="left">
+              <Tag color="magenta" icon={<InfoCircleOutlined />}>
                 Treatments
-              </label>
-              <ul className="list-disc pl-5">
-                {currentAuthorization?.treatments?.map((treatment) => (
-                  <li key={treatment.id}>{treatment?.name}</li>
+              </Tag>
+            </Divider>
+            <Card
+              bordered={false}
+              style={{ backgroundColor: "#fff0f6", borderRadius: 10 }}
+            >
+              <ul>
+                {currentAuthorization?.treatments?.map((treatment, idx) => (
+                  <li key={idx}>
+                    <strong>{treatment.name}</strong> - ${treatment.price}{" "}
+                    {treatment.isApprovalRequired && (
+                      <Badge color="red" text="Approval Required" />
+                    )}
+                  </li>
                 ))}
               </ul>
-            </div>
-            <div className="border rounded p-2 shadow mb-4">
-              <label
-                htmlFor=""
-                className="font-semibold underline underline-offset-4 mb-2 block"
-              >
+            </Card>
+
+            {/* Drugs */}
+            <Divider orientation="left">
+              <Tag color="red" icon={<MedicineBoxOutlined />}>
                 Drugs
-              </label>
-              <ul className="list-disc pl-5">
+              </Tag>
+            </Divider>
+            <Card
+              bordered={false}
+              style={{ backgroundColor: "#fff0f6", borderRadius: 10 }}
+            >
+              <ul>
                 {currentAuthorization?.authorizationRequestDrugs?.map(
-                  (drug) => (
-                    <li key={drug?.drugs?.id}>
-                      {drug?.drugs?.name} || QTY ( {drug?.quantity} )
+                  (drug, idx) => (
+                    <li key={idx}>
+                      <strong>{drug.drugs.name}</strong> - ${drug.drugs.price}{" "}
+                      (Quantity: {drug.quantity}) -{" "}
+                      <Tag color="blue">{drug.drugs.group}</Tag>
                     </li>
                   )
                 )}
               </ul>
-            </div>
-            <Form.Item>
-              <Button type="primary" htmlType="submit">
-                Save
+            </Card>
+
+            {/* Action Buttons */}
+            <Row justify="end" style={{ marginTop: "20px" }}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                style={{ marginRight: 10 }}
+              >
+                Update
               </Button>
-              <Button style={{ marginLeft: "10px" }} onClick={handleCancel}>
-                Cancel
-              </Button>
-            </Form.Item>
+              <Button onClick={handleCancel}>Cancel</Button>
+            </Row>
           </Form>
         </Modal>
       )}

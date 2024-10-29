@@ -167,6 +167,7 @@ model AuthorizationRequest {
   submiterId                Int
   hospital                  Hospital                    @relation("HospitalRequests", fields: [hospitalId], references: [id])
   hmo                       HMO?                        @relation(fields: [responsedBy], references: [id])
+  authorizationCode         String?
   authorizationRequestDrugs AuthorizationRequestDrugs[]
   diagnosis                 Diagnosis[]                 @relation("DiagnosisRequests_Authorization")
   treatments                Treatment[]                 @relation("TreatmentRequests_Authorization")
@@ -201,6 +202,8 @@ model ClaimRequest {
 
   hospital          Hospital            @relation("HospitalClaims", fields: [hospitalId], references: [id])
   hmo               HMO?                @relation(fields: [responsedBy], references: [id])
+  authorizationCode         String?
+  
   claimRequestDrugs ClaimRequestDrugs[]
   claimRequestTreatments ClaimRequestTreatment[] // Relation to claimRequestTreatments (New structure)
   diagnosis         Diagnosis[]         @relation("DiagnosisRequests_Claims")

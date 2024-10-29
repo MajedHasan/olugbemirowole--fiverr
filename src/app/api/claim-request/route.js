@@ -379,6 +379,35 @@ export async function PUT(req) {
       },
     });
 
+    const findEnrollee = await prisma.enrollee.findUnique({
+      where: { policyNo: data.policyNo },
+    });
+
+    const findCompany = await prisma.organisation.findFirst({
+      where: { companyName: findEnrollee.company },
+    });
+
+    const createAuthorizationCode = () => {
+      const companyCode = findCompany
+        ? findCompany.companyID.split("-").pop() // Get the last part of companyID
+        : "NA";
+      const enrolleeCode = findEnrollee
+        ? findEnrollee.policyNo.split("/").pop() // Get the last part
+        : "NA";
+      // Get the current date
+      const today = new Date();
+
+      // Format the day, month, and year
+      const day = String(today.getDate()).padStart(2, "0"); // ensures 2-digit day
+      const month = String(today.getMonth() + 1).padStart(2, "0"); // ensures 2-digit month (January is 0)
+      const year = String(today.getFullYear()).slice(-2); // get last 2 digits of the year
+
+      // Combine to form the issue date in DDMMYY format
+      const issueDate = `${day}${month}${year}`;
+
+      return `SH-${companyCode}-${enrolleeCode}-${issueDate}AA`;
+    };
+
     // Initialize acceptedCost and rejectedCost
     let acceptedCost = 0;
     let rejectedCost = 0;
@@ -483,6 +512,10 @@ export async function PUT(req) {
         },
         acceptedCost: findClaimRequest.acceptedCost + acceptedCost, // Update acceptedCost
         rejectedCost: findClaimRequest.rejectedCost + rejectedCost, // Update rejectedCost
+        authorizationCode:
+          data.authorizationCode ||
+          findClaimRequest.authorizationCode ||
+          createAuthorizationCode(),
       },
     });
 
@@ -509,7 +542,13 @@ export async function PUT(req) {
     // Check if the claim request has been accepted and notify if necessary
     if (data.status === "ACCEPTED" && findClaimRequest.status === "PENDING") {
       // Create notification message
-      const notificationMessage = `Claim request has been Accepted by HMO for policy number ${data.policyNo}.`;
+      const notificationMessage = `Claim request has been Accepted by HMO for policy number ${
+        data.policyNo
+      } and Authorization Code is ${
+        updatedClaimRequest.authorizationCode
+          ? updatedClaimRequest.authorizationCode
+          : " N/A"
+      }`;
 
       // Send notifications
       await sendNotification(findHospital.user.id, notificationMessage, "DB");

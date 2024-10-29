@@ -255,6 +255,37 @@ export async function PUT(req) {
       },
     });
 
+    const findEnrollee = await prisma.enrollee.findFirst({
+      where: { policyNo: data.policyNo },
+    });
+
+    // return NextResponse.json(findEnrollee);
+
+    const findCompany = await prisma.organisation.findFirst({
+      where: { companyName: findEnrollee.company },
+    });
+
+    const createAuthorizationCode = () => {
+      const companyCode = findCompany
+        ? findCompany.companyID.split("-").pop() // Get the last part of companyID
+        : "NA";
+      const enrolleeCode = findEnrollee
+        ? findEnrollee.policyNo.split("/").pop() // Get the last part
+        : "NA";
+      // Get the current date
+      const today = new Date();
+
+      // Format the day, month, and year
+      const day = String(today.getDate()).padStart(2, "0"); // ensures 2-digit day
+      const month = String(today.getMonth() + 1).padStart(2, "0"); // ensures 2-digit month (January is 0)
+      const year = String(today.getFullYear()).slice(-2); // get last 2 digits of the year
+
+      // Combine to form the issue date in DDMMYY format
+      const issueDate = `${day}${month}${year}`;
+
+      return `SH-${companyCode}-${enrolleeCode}-${issueDate}AA`;
+    };
+
     const updatedRequest = await prisma.authorizationRequest.update({
       where: { id: parseInt(id) },
       data: {
@@ -284,6 +315,10 @@ export async function PUT(req) {
             quantity: drug.quantity,
           })),
         },
+        authorizationCode:
+          data?.authorizationCode ||
+          findAuthorizationRequest?.authorizationCode ||
+          createAuthorizationCode(),
       },
     });
 
@@ -292,7 +327,13 @@ export async function PUT(req) {
       findAuthorizationRequest.status === "PENDING"
     ) {
       // Create notification message
-      const notificationMessage = `Authorization request has been Accepted by HMO for policy number ${data.policyNo}.`;
+      const notificationMessage = `Authorization request has been Accepted by HMO for policy number ${
+        data.policyNo
+      } and Authorization Code is ${
+        updatedClaimRequest.authorizationCode
+          ? updatedClaimRequest.authorizationCode
+          : " N/A"
+      }`;
 
       // Send notifications
       await sendNotification(findHospital.user.id, notificationMessage, "DB");

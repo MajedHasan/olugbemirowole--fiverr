@@ -204,6 +204,14 @@ const ClaimRequestPage = () => {
                         ${selectedClaim.rejectedCost}
                       </Text>
                     </Row>
+                    <Row justify="space-between">
+                      <Text strong>Authorization Code: </Text>
+                      <Text style={{ color: "orange", fontWeight: "bold" }}>
+                        {selectedClaim.authorizationCode
+                          ? selectedClaim.authorizationCode
+                          : " N/A"}
+                      </Text>
+                    </Row>
                   </Space>
                 </Card>
               </Col>

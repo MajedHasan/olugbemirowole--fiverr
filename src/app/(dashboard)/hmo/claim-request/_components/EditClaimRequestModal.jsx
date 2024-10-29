@@ -417,6 +417,18 @@ const EditClaimRequestModal = ({
             />
           </Form.Item>
 
+          <Form.Item
+            name="authorizationCode"
+            label="Authorization Code"
+            style={{ flex: "1 1 30%" }}
+          >
+            <Input
+              disabled
+              value={currentClaim.authorizationCode || "N/A"}
+              prefix={<InfoCircleOutlined />}
+            />
+          </Form.Item>
+
           <Form.Item name="company" label="Company" style={{ flex: "1 1 30%" }}>
             <Input
               disabled

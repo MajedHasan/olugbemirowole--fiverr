@@ -119,8 +119,8 @@ const ClaimRequestPage = () => {
       sortable: true,
     },
     {
-      name: "Hospital Email",
-      selector: (row) => row?.hospitalEmail || "N/A",
+      name: "Authorization Code",
+      selector: (row) => row?.authorizationCode || "N/A",
       sortable: true,
     },
     {
